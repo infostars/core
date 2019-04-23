@@ -145,7 +145,8 @@ class DB
             'telegram_update',
             'user',
             'user_chat',
-            'conversation'
+            'conversation',
+            'botan_shortener'
         ];
         foreach ($tables as $table) {
             $table_name = 'TB_' . strtoupper($table);
@@ -1299,5 +1300,78 @@ class DB
         $fields_values['updated_at'] = self::getTimestamp();
 
         return self::update(TB_CONVERSATION, $fields_values, $where_fields_values);
+    }
+
+    /**
+     * Select cached shortened URL from the database
+     *
+     * @deprecated Botan.io service is no longer working
+     * @param string $url
+     * @param string $user_id
+     *
+     * @return array|bool
+     * @throws TelegramException
+     */
+    public static function selectShortUrl($url, $user_id)
+    {
+        if (!self::isDbConnected()) {
+            return false;
+        }
+
+        try {
+            $sth = self::$pdo->prepare('
+                SELECT `short_url`
+                FROM `' . TB_BOTAN_SHORTENER . '`
+                WHERE `user_id` = :user_id
+                  AND `url` = :url
+                ORDER BY `created_at` DESC
+                LIMIT 1
+            ');
+
+            $sth->bindValue(':user_id', $user_id);
+            $sth->bindValue(':url', $url);
+            $sth->execute();
+
+            return $sth->fetchColumn();
+        } catch (Exception $e) {
+            throw new TelegramException($e->getMessage());
+        }
+    }
+
+    /**
+     * Insert shortened URL into the database
+     *
+     * @deprecated Botan.io service is no longer working
+     *
+     * @param string $url
+     * @param string $user_id
+     * @param string $short_url
+     *
+     * @return bool
+     * @throws TelegramException
+     */
+    public static function insertShortUrl($url, $user_id, $short_url)
+    {
+        if (!self::isDbConnected()) {
+            return false;
+        }
+
+        try {
+            $sth = self::$pdo->prepare('
+                INSERT INTO `' . TB_BOTAN_SHORTENER . '`
+                (`user_id`, `url`, `short_url`, `created_at`)
+                VALUES
+                (:user_id, :url, :short_url, :created_at)
+            ');
+
+            $sth->bindValue(':user_id', $user_id);
+            $sth->bindValue(':url', $url);
+            $sth->bindValue(':short_url', $short_url);
+            $sth->bindValue(':created_at', self::getTimestamp());
+
+            return $sth->execute();
+        } catch (Exception $e) {
+            throw new TelegramException($e->getMessage());
+        }
     }
 }

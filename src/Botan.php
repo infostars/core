@@ -84,8 +84,6 @@ class Botan
 
         self::$token = $token;
         self::$client = new Client(['base_uri' => self::$api_base_uri, 'timeout' => $options['timeout']]);
-
-        BotanDB::initializeBotanDb();
     }
 
     /**
@@ -222,7 +220,7 @@ class Botan
             throw new TelegramException('User id is empty!');
         }
 
-        if ($cached = BotanDB::selectShortUrl($url, $user_id)) {
+        if ($cached = DB::selectShortUrl($url, $user_id)) {
             return $cached;
         }
 
@@ -247,7 +245,7 @@ class Botan
             return $url;
         }
 
-        BotanDB::insertShortUrl($url, $user_id, $result);
+        DB::insertShortUrl($url, $user_id, $result);
 
         return $result;
     }
