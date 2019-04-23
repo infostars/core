@@ -188,7 +188,6 @@ class Telegram
     public function enableMySql(array $credential, $table_prefix = null, $encoding = 'utf8mb4')
     {
         $this->pdo = DB::initialize($credential, $this, $table_prefix, $encoding);
-        ConversationDB::initializeConversation();
         $this->mysql_enabled = true;
 
         return $this;
@@ -206,7 +205,6 @@ class Telegram
     public function enableExternalMySql($external_pdo_connection, $table_prefix = null)
     {
         $this->pdo = DB::externalInitialize($external_pdo_connection, $this, $table_prefix);
-        ConversationDB::initializeConversation();
         $this->mysql_enabled = true;
 
         return $this;
