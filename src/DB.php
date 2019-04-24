@@ -68,7 +68,7 @@ class DB
      * @param string   $table_prefix Table prefix
      * @param string   $encoding     Database character encoding
      *
-     * @return PDO PDO database object
+     * @return DB
      * @throws TelegramException
      */
     public function initialize(
@@ -77,6 +77,9 @@ class DB
         $table_prefix = null,
         $encoding = 'utf8mb4'
     ) {
+        if (self::$instance !== null) {
+            return self::$instance;
+        }
         if (empty($credentials)) {
             throw new TelegramException('MySQL credentials not provided!');
         }
@@ -114,7 +117,7 @@ class DB
      * @param Telegram $telegram                Telegram object to connect with this object
      * @param string   $table_prefix            Table prefix
      *
-     * @return PDO PDO database object
+     * @return DB
      * @throws TelegramException
      */
     public function externalInitialize(
@@ -122,6 +125,9 @@ class DB
         Telegram $telegram,
         $table_prefix = null
     ) {
+        if (self::$instance !== null) {
+            return self::$instance;
+        }
         if ($external_pdo_connection === null) {
             throw new TelegramException('MySQL external connection not provided!');
         }

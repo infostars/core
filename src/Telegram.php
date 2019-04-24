@@ -96,13 +96,6 @@ class Telegram
     protected $mysql_enabled = false;
 
     /**
-     * PDO object
-     *
-     * @var \PDO
-     */
-    protected $pdo;
-
-    /**
      * Commands config
      *
      * @var array
@@ -187,7 +180,7 @@ class Telegram
      */
     public function enableMySql(array $credential, $table_prefix = null, $encoding = 'utf8mb4')
     {
-        $this->pdo = DBFactory::initMysql($credential, $this, $table_prefix, $encoding);
+        DBFactory::initMysql($credential, $this, $table_prefix, $encoding);
         $this->mysql_enabled = true;
 
         return $this;
@@ -204,7 +197,7 @@ class Telegram
      */
     public function enableExternalMySql($external_pdo_connection, $table_prefix = null)
     {
-        $this->pdo = DBFactory::initMysqlExternal($external_pdo_connection, $this, $table_prefix);
+        DBFactory::initMysqlExternal($external_pdo_connection, $this, $table_prefix);
         $this->mysql_enabled = true;
 
         return $this;
