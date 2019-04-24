@@ -99,41 +99,6 @@ abstract class DBBase
     abstract protected function initDb(array $credentials, $encoding = 'utf8mb4');
 
     /**
-     * External Initialize
-     *
-     * Let you use the class with an external already existing Pdo Mysql connection.
-     *
-     * @param PDO      $external_pdo_connection PDO database object
-     * @param Telegram $telegram                Telegram object to connect with this object
-     * @param string   $table_prefix            Table prefix
-     *
-     * @return DB
-     * @throws TelegramException
-     */
-    public function externalInitialize(
-        $external_pdo_connection,
-        Telegram $telegram,
-        $table_prefix = null
-    ) {
-        if (self::$instance !== null) {
-            return self::$instance;
-        }
-        if ($external_pdo_connection === null) {
-            throw new TelegramException('MySQL external connection not provided!');
-        }
-
-        $this->pdo               = $external_pdo_connection;
-        $this->telegram          = $telegram;
-        $this->mysql_credentials = [];
-        $this->table_prefix      = $table_prefix;
-        self::$instance          = $this;
-
-        $this->defineTables();
-
-        return $this;
-    }
-
-    /**
      * @return DB|null
      */
     public static function getInstance()
@@ -173,20 +138,7 @@ abstract class DBBase
      *
      * @return bool
      */
-    public function isDbConnected()
-    {
-        return $this->pdo !== null;
-    }
-
-    /**
-     * Get the PDO object of the connected database
-     *
-     * @return PDO
-     */
-    public function getPdo()
-    {
-        return $this->pdo;
-    }
+    abstract public function isDbConnected();
 
     /**
      * Fetch update(s) from DB
@@ -197,44 +149,7 @@ abstract class DBBase
      * @return array|bool Fetched data or false if not connected
      * @throws TelegramException
      */
-    public function selectTelegramUpdate($limit = null, $id = null)
-    {
-        if (!$this->isDbConnected()) {
-            return false;
-        }
-
-        try {
-            $sql = '
-                SELECT `id`
-                FROM `' . TB_TELEGRAM_UPDATE . '`
-            ';
-
-            if ($id !== null) {
-                $sql .= ' WHERE `id` = :id';
-            } else {
-                $sql .= ' ORDER BY `id` DESC';
-            }
-
-            if ($limit !== null) {
-                $sql .= ' LIMIT :limit';
-            }
-
-            $sth = $this->pdo->prepare($sql);
-
-            if ($limit !== null) {
-                $sth->bindValue(':limit', $limit, PDO::PARAM_INT);
-            }
-            if ($id !== null) {
-                $sth->bindValue(':id', $id);
-            }
-
-            $sth->execute();
-
-            return $sth->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            throw new TelegramException($e->getMessage());
-        }
-    }
+    abstract public function selectTelegramUpdate($limit = null, $id = null);
 
     /**
      * Fetch message(s) from DB
@@ -244,36 +159,7 @@ abstract class DBBase
      * @return array|bool Fetched data or false if not connected
      * @throws TelegramException
      */
-    public function selectMessages($limit = null)
-    {
-        if (!$this->isDbConnected()) {
-            return false;
-        }
-
-        try {
-            $sql = '
-                SELECT *
-                FROM `' . TB_MESSAGE . '`
-                ORDER BY `id` DESC
-            ';
-
-            if ($limit !== null) {
-                $sql .= ' LIMIT :limit';
-            }
-
-            $sth = $this->pdo->prepare($sql);
-
-            if ($limit !== null) {
-                $sth->bindValue(':limit', $limit, PDO::PARAM_INT);
-            }
-
-            $sth->execute();
-
-            return $sth->fetchAll(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            throw new TelegramException($e->getMessage());
-        }
-    }
+    abstract public function selectMessages($limit = null);
 
     /**
      * Convert from unix timestamp to timestamp
@@ -344,27 +230,10 @@ abstract class DBBase
             return false;
         }
 
-        try {
-            $sth = $this->pdo->prepare('
-                INSERT IGNORE INTO `' . TB_TELEGRAM_UPDATE . '`
-                (`id`, `chat_id`, `message_id`, `inline_query_id`, `chosen_inline_result_id`, `callback_query_id`, `edited_message_id`)
-                VALUES
-                (:id, :chat_id, :message_id, :inline_query_id, :chosen_inline_result_id, :callback_query_id, :edited_message_id)
-            ');
-
-            $sth->bindValue(':id', $id);
-            $sth->bindValue(':chat_id', $chat_id);
-            $sth->bindValue(':message_id', $message_id);
-            $sth->bindValue(':edited_message_id', $edited_message_id);
-            $sth->bindValue(':inline_query_id', $inline_query_id);
-            $sth->bindValue(':chosen_inline_result_id', $chosen_inline_result_id);
-            $sth->bindValue(':callback_query_id', $callback_query_id);
-
-            return $sth->execute();
-        } catch (PDOException $e) {
-            throw new TelegramException($e->getMessage());
-        }
+        return $this->insertTelegramUpdateToDb($id, $chat_id, $message_id, $inline_query_id, $chosen_inline_result_id, $callback_query_id, $edited_message_id);
     }
+
+    abstract protected function insertTelegramUpdateToDb($id, $chat_id = null, $message_id = null, $inline_query_id = null, $chosen_inline_result_id = null, $callback_query_id = null, $edited_message_id = null);
 
     /**
      * Insert users and save their connection to chats
@@ -382,57 +251,30 @@ abstract class DBBase
             return false;
         }
 
-        try {
-            $sth = $this->pdo->prepare('
-                INSERT INTO `' . TB_USER . '`
-                (`id`, `is_bot`, `username`, `first_name`, `last_name`, `language_code`, `created_at`, `updated_at`)
-                VALUES
-                (:id, :is_bot, :username, :first_name, :last_name, :language_code, :created_at, :updated_at)
-                ON DUPLICATE KEY UPDATE
-                    `is_bot`         = VALUES(`is_bot`),
-                    `username`       = VALUES(`username`),
-                    `first_name`     = VALUES(`first_name`),
-                    `last_name`      = VALUES(`last_name`),
-                    `language_code`  = VALUES(`language_code`),
-                    `updated_at`     = VALUES(`updated_at`)
-            ');
-
-            $sth->bindValue(':id', $user->getId());
-            $sth->bindValue(':is_bot', $user->getIsBot(), PDO::PARAM_INT);
-            $sth->bindValue(':username', $user->getUsername());
-            $sth->bindValue(':first_name', $user->getFirstName());
-            $sth->bindValue(':last_name', $user->getLastName());
-            $sth->bindValue(':language_code', $user->getLanguageCode());
-            $date = $date ?: $this->getTimestamp();
-            $sth->bindValue(':created_at', $date);
-            $sth->bindValue(':updated_at', $date);
-
-            $status = $sth->execute();
-        } catch (PDOException $e) {
-            throw new TelegramException($e->getMessage());
-        }
+        $status = $this->insertUserToDb($user);
 
         // Also insert the relationship to the chat into the user_chat table
         if ($chat instanceof Chat) {
-            try {
-                $sth = $this->pdo->prepare('
-                    INSERT IGNORE INTO `' . TB_USER_CHAT . '`
-                    (`user_id`, `chat_id`)
-                    VALUES
-                    (:user_id, :chat_id)
-                ');
-
-                $sth->bindValue(':user_id', $user->getId());
-                $sth->bindValue(':chat_id', $chat->getId());
-
-                $status = $sth->execute();
-            } catch (PDOException $e) {
-                throw new TelegramException($e->getMessage());
-            }
+            $status = $this->insertUserChatRelation($user, $chat);
         }
 
         return $status;
     }
+
+    /**
+     * @param User $user
+     *
+     * @return bool
+     */
+    abstract protected function insertUserToDb(User $user);
+
+    /**
+     * @param User $user
+     * @param Chat $chat
+     *
+     * @return bool
+     */
+    abstract protected function insertUserChatRelation(User $user, Chat $chat);
 
     /**
      * Insert chat
@@ -450,46 +292,32 @@ abstract class DBBase
             return false;
         }
 
-        try {
-            $sth = $this->pdo->prepare('
-                INSERT IGNORE INTO `' . TB_CHAT . '`
-                (`id`, `type`, `title`, `username`, `all_members_are_administrators`, `created_at` ,`updated_at`, `old_id`)
-                VALUES
-                (:id, :type, :title, :username, :all_members_are_administrators, :created_at, :updated_at, :old_id)
-                ON DUPLICATE KEY UPDATE
-                    `type`                           = VALUES(`type`),
-                    `title`                          = VALUES(`title`),
-                    `username`                       = VALUES(`username`),
-                    `all_members_are_administrators` = VALUES(`all_members_are_administrators`),
-                    `updated_at`                     = VALUES(`updated_at`)
-            ');
+        $type = $chat->getType();
+        $id = $chat->getId();
+        $oldId = $migrate_to_chat_id;
 
-            $chat_id   = $chat->getId();
-            $chat_type = $chat->getType();
-
-            if ($migrate_to_chat_id !== null) {
-                $chat_type = 'supergroup';
-
-                $sth->bindValue(':id', $migrate_to_chat_id);
-                $sth->bindValue(':old_id', $chat_id);
-            } else {
-                $sth->bindValue(':id', $chat_id);
-                $sth->bindValue(':old_id', $migrate_to_chat_id);
-            }
-
-            $sth->bindValue(':type', $chat_type);
-            $sth->bindValue(':title', $chat->getTitle());
-            $sth->bindValue(':username', $chat->getUsername());
-            $sth->bindValue(':all_members_are_administrators', $chat->getAllMembersAreAdministrators(), PDO::PARAM_INT);
-            $date = $date ?: $this->getTimestamp();
-            $sth->bindValue(':created_at', $date);
-            $sth->bindValue(':updated_at', $date);
-
-            return $sth->execute();
-        } catch (PDOException $e) {
-            throw new TelegramException($e->getMessage());
+        if ($migrate_to_chat_id !== null) {
+            $type = 'supergroup';
+            $id = $migrate_to_chat_id;
+            $oldId = $chat->getId();
         }
+        $createdAt = $date;
+        $updatedAt = $date;
+
+        $this->insertChatToDb($chat, $id, $oldId, $type, $createdAt, $updatedAt);
     }
+
+    /**
+     * @param $chat
+     * @param $id
+     * @param $oldId
+     * @param $type
+     * @param $createdAt
+     * @param $updatedAt
+     *
+     * @return bool
+     */
+    abstract protected function insertChatToDb($chat, $id, $oldId, $type, $createdAt, $updatedAt);
 
     /**
      * Insert request into database
@@ -626,41 +454,7 @@ abstract class DBBase
      * @return bool If the insert was successful
      * @throws TelegramException
      */
-    public function insertInlineQueryRequest(InlineQuery $inline_query)
-    {
-        if (!$this->isDbConnected()) {
-            return false;
-        }
-
-        try {
-            $sth = $this->pdo->prepare('
-                INSERT IGNORE INTO `' . TB_INLINE_QUERY . '`
-                (`id`, `user_id`, `location`, `query`, `offset`, `created_at`)
-                VALUES
-                (:id, :user_id, :location, :query, :offset, :created_at)
-            ');
-
-            $date    = $this->getTimestamp();
-            $user_id = null;
-
-            $user = $inline_query->getFrom();
-            if ($user instanceof User) {
-                $user_id = $user->getId();
-                $this->insertUser($user, $date);
-            }
-
-            $sth->bindValue(':id', $inline_query->getId());
-            $sth->bindValue(':user_id', $user_id);
-            $sth->bindValue(':location', $inline_query->getLocation());
-            $sth->bindValue(':query', $inline_query->getQuery());
-            $sth->bindValue(':offset', $inline_query->getOffset());
-            $sth->bindValue(':created_at', $date);
-
-            return $sth->execute();
-        } catch (PDOException $e) {
-            throw new TelegramException($e->getMessage());
-        }
-    }
+    abstract public function insertInlineQueryRequest(InlineQuery $inline_query);
 
     /**
      * Insert chosen inline result request into database
@@ -676,35 +470,28 @@ abstract class DBBase
             return false;
         }
 
-        try {
-            $sth = $this->pdo->prepare('
-                INSERT INTO `' . TB_CHOSEN_INLINE_RESULT . '`
-                (`result_id`, `user_id`, `location`, `inline_message_id`, `query`, `created_at`)
-                VALUES
-                (:result_id, :user_id, :location, :inline_message_id, :query, :created_at)
-            ');
+        $date    = $this->getTimestamp();
+        $user_id = null;
 
-            $date    = $this->getTimestamp();
-            $user_id = null;
-
-            $user = $chosen_inline_result->getFrom();
-            if ($user instanceof User) {
-                $user_id = $user->getId();
-                $this->insertUser($user, $date);
-            }
-
-            $sth->bindValue(':result_id', $chosen_inline_result->getResultId());
-            $sth->bindValue(':user_id', $user_id);
-            $sth->bindValue(':location', $chosen_inline_result->getLocation());
-            $sth->bindValue(':inline_message_id', $chosen_inline_result->getInlineMessageId());
-            $sth->bindValue(':query', $chosen_inline_result->getQuery());
-            $sth->bindValue(':created_at', $date);
-
-            return $sth->execute();
-        } catch (PDOException $e) {
-            throw new TelegramException($e->getMessage());
+        $user = $chosen_inline_result->getFrom();
+        if ($user instanceof User) {
+            $user_id = $user->getId();
+            $this->insertUser($user, $date);
         }
+
+        $created_at = $date;
+
+        return $this->insertChosenInlineResultRequestToDb($chosen_inline_result, $user_id, $created_at);
     }
+
+    /**
+     * @param ChosenInlineResult $chosen_inline_result
+     * @param                    $user_id
+     * @param                    $created_at
+     *
+     * @return bool
+     */
+    abstract protected function insertChosenInlineResultRequestToDb(ChosenInlineResult $chosen_inline_result, $user_id, $created_at);
 
     /**
      * Insert callback query request into database
