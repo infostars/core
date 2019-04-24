@@ -12,6 +12,7 @@ namespace Longman\TelegramBot\Commands\AdminCommands;
 
 use Longman\TelegramBot\Commands\AdminCommand;
 use Longman\TelegramBot\DB;
+use Longman\TelegramBot\DBFactory;
 use Longman\TelegramBot\Exception\TelegramException;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\TelegramLog;
@@ -397,7 +398,7 @@ class CleanupCommand extends AdminCommand
         Request::sendMessage($data);
 
         $rows = 0;
-        $pdo  = DB::getPdo();
+        $pdo  = DBFactory::getInstance()->getPdo();
         try {
             $pdo->beginTransaction();
 

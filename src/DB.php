@@ -55,6 +55,12 @@ class DB
     protected $telegram;
 
     /**
+     * @var self
+     */
+    protected static $instance;
+
+
+    /**
      * Initialize
      *
      * @param array    $credentials  Database connection details
@@ -92,10 +98,11 @@ class DB
         $this->telegram          = $telegram;
         $this->mysql_credentials = $credentials;
         $this->table_prefix      = $table_prefix;
+        self::$instance          = $this;
 
         $this->defineTables();
 
-        return $this->pdo;
+        return $this;
     }
 
     /**
@@ -123,10 +130,19 @@ class DB
         $this->telegram          = $telegram;
         $this->mysql_credentials = [];
         $this->table_prefix      = $table_prefix;
+        self::$instance          = $this;
 
         $this->defineTables();
 
-        return $this->pdo;
+        return $this;
+    }
+
+    /**
+     * @return DB|null
+     */
+    public static function getInstance()
+    {
+        return self::$instance;
     }
 
     /**

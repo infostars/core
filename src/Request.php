@@ -737,7 +737,7 @@ class Request
     ) {
         self::ensureValidAction($callback_function);
 
-        $chats = DB::selectChats($select_chats_params);
+        $chats = DBFactory::getInstance()->selectChats($select_chats_params);
 
         $results = [];
         if (is_array($chats)) {
@@ -760,7 +760,7 @@ class Request
      */
     public static function setLimiter($enable = true, array $options = [])
     {
-        if (DB::isDbConnected()) {
+        if (DBFactory::getInstance()->isDbConnected()) {
             $options_default = [
                 'interval' => 1,
             ];
@@ -832,7 +832,7 @@ class Request
                         throw new TelegramException('Timed out while waiting for a request spot!');
                     }
 
-                    $requests = DB::getTelegramRequestCount($chat_id, $inline_message_id);
+                    $requests = DBFactory::getInstance()->getTelegramRequestCount($chat_id, $inline_message_id);
 
                     $chat_per_second   = ($requests['LIMIT_PER_SEC'] == 0); // No more than one message per second inside a particular chat
                     $global_per_second = ($requests['LIMIT_PER_SEC_ALL'] < 30);    // No more than 30 messages per second to different chats
@@ -846,7 +846,7 @@ class Request
                     usleep(self::$limiter_interval * 1000000);
                 }
 
-                DB::insertTelegramRequest($action, $data);
+                DBFactory::getInstance()->insertTelegramRequest($action, $data);
             }
         }
     }

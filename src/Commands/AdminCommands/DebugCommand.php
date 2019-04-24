@@ -12,6 +12,7 @@ namespace Longman\TelegramBot\Commands\AdminCommands;
 
 use Longman\TelegramBot\Commands\AdminCommand;
 use Longman\TelegramBot\DB;
+use Longman\TelegramBot\DBFactory;
 use Longman\TelegramBot\Request;
 
 /**
@@ -47,7 +48,7 @@ class DebugCommand extends AdminCommand
      */
     public function execute()
     {
-        $pdo = DB::getPdo();
+        $pdo = DBFactory::getInstance()->getPdo();
         $message = $this->getMessage();
         $chat = $message->getChat();
         $text = strtolower($message->getText(true));

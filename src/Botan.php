@@ -220,7 +220,7 @@ class Botan
             throw new TelegramException('User id is empty!');
         }
 
-        if ($cached = DB::selectShortUrl($url, $user_id)) {
+        if ($cached = DBFactory::getInstance()->selectShortUrl($url, $user_id)) {
             return $cached;
         }
 
@@ -245,7 +245,7 @@ class Botan
             return $url;
         }
 
-        DB::insertShortUrl($url, $user_id, $result);
+        DBFactory::getInstance()->insertShortUrl($url, $user_id, $result);
 
         return $result;
     }

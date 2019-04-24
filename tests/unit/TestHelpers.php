@@ -11,6 +11,7 @@
 namespace Longman\TelegramBot\Tests\Unit;
 
 use Longman\TelegramBot\DB;
+use Longman\TelegramBot\DBFactory;
 use Longman\TelegramBot\Entities\Chat;
 use Longman\TelegramBot\Entities\Message;
 use Longman\TelegramBot\Entities\Update;
@@ -203,7 +204,7 @@ class TestHelpers
      */
     public static function startFakeConversation()
     {
-        if (!DB::isDbConnected()) {
+        if (!DBFactory::getInstance()->isDbConnected()) {
             return false;
         }
 
@@ -214,8 +215,8 @@ class TestHelpers
 
         //Make sure we have a valid user and chat available.
         $message = self::getFakeMessageObject(['message_id' => $message_id], ['id' => $user_id], ['id' => $chat_id]);
-        DB::insertMessageRequest($message);
-        DB::insertUser($message->getFrom(), null, $message->getChat());
+        DBFactory::getInstance()->insertMessageRequest($message);
+        DBFactory::getInstance()->insertUser($message->getFrom(), null, $message->getChat());
 
         return compact('message_id', 'user_id', 'chat_id');
     }

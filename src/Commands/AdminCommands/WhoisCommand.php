@@ -14,6 +14,7 @@ namespace Longman\TelegramBot\Commands\AdminCommands;
 
 use Longman\TelegramBot\Commands\AdminCommand;
 use Longman\TelegramBot\DB;
+use Longman\TelegramBot\DBFactory;
 use Longman\TelegramBot\Entities\Chat;
 use Longman\TelegramBot\Entities\PhotoSize;
 use Longman\TelegramBot\Entities\UserProfilePhotos;
@@ -89,7 +90,7 @@ class WhoisCommand extends AdminCommand
             $result     = null;
 
             if (is_numeric($text)) {
-                $results = DB::selectChats([
+                $results = DBFactory::getInstance()->selectChats([
                     'groups'      => true,
                     'supergroups' => true,
                     'channels'    => true,
@@ -101,7 +102,7 @@ class WhoisCommand extends AdminCommand
                     $result = reset($results);
                 }
             } else {
-                $results = DB::selectChats([
+                $results = DBFactory::getInstance()->selectChats([
                     'groups'      => true,
                     'supergroups' => true,
                     'channels'    => true,
