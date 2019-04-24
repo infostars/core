@@ -620,94 +620,55 @@ abstract class DBBase
             $left_chat_member_id = $left_chat_member->getId();
         }
 
-        try {
-            $sth = $this->pdo->prepare('
-                INSERT IGNORE INTO `' . TB_MESSAGE . '`
-                (
-                    `id`, `user_id`, `chat_id`, `date`, `forward_from`, `forward_from_chat`, `forward_from_message_id`,
-                    `forward_date`, `reply_to_chat`, `reply_to_message`, `media_group_id`, `text`, `entities`, `audio`, `document`,
-                    `animation`, `game`, `photo`, `sticker`, `video`, `voice`, `video_note`, `caption`, `contact`,
-                    `location`, `venue`, `new_chat_members`, `left_chat_member`,
-                    `new_chat_title`,`new_chat_photo`, `delete_chat_photo`, `group_chat_created`,
-                    `supergroup_chat_created`, `channel_chat_created`,
-                    `migrate_from_chat_id`, `migrate_to_chat_id`, `pinned_message`, `connected_website`, `passport_data`
-                ) VALUES (
-                    :message_id, :user_id, :chat_id, :date, :forward_from, :forward_from_chat, :forward_from_message_id,
-                    :forward_date, :reply_to_chat, :reply_to_message, :media_group_id, :text, :entities, :audio, :document,
-                    :animation, :game, :photo, :sticker, :video, :voice, :video_note, :caption, :contact,
-                    :location, :venue, :new_chat_members, :left_chat_member,
-                    :new_chat_title, :new_chat_photo, :delete_chat_photo, :group_chat_created,
-                    :supergroup_chat_created, :channel_chat_created,
-                    :migrate_from_chat_id, :migrate_to_chat_id, :pinned_message, :connected_website, :passport_data
-                )
-            ');
-
-            $user_id = null;
-            if ($user instanceof User) {
-                $user_id = $user->getId();
-            }
-            $chat_id = $chat->getId();
-
-            $reply_to_message    = $message->getReplyToMessage();
-            $reply_to_message_id = null;
-            if ($reply_to_message instanceof ReplyToMessage) {
-                $reply_to_message_id = $reply_to_message->getMessageId();
-                // please notice that, as explained in the documentation, reply_to_message don't contain other
-                // reply_to_message field so recursion deep is 1
-                $this->insertMessageRequest($reply_to_message);
-            }
-
-            $sth->bindValue(':message_id', $message->getMessageId());
-            $sth->bindValue(':chat_id', $chat_id);
-            $sth->bindValue(':user_id', $user_id);
-            $sth->bindValue(':date', $date);
-            $sth->bindValue(':forward_from', $forward_from);
-            $sth->bindValue(':forward_from_chat', $forward_from_chat);
-            $sth->bindValue(':forward_from_message_id', $message->getForwardFromMessageId());
-            $sth->bindValue(':forward_date', $forward_date);
-
-            $reply_to_chat_id = null;
-            if ($reply_to_message_id !== null) {
-                $reply_to_chat_id = $chat_id;
-            }
-            $sth->bindValue(':reply_to_chat', $reply_to_chat_id);
-            $sth->bindValue(':reply_to_message', $reply_to_message_id);
-
-            $sth->bindValue(':media_group_id', $message->getMediaGroupId());
-            $sth->bindValue(':text', $message->getText());
-            $sth->bindValue(':entities', $t = $this->entitiesArrayToJson($message->getEntities(), null));
-            $sth->bindValue(':audio', $message->getAudio());
-            $sth->bindValue(':document', $message->getDocument());
-            $sth->bindValue(':animation', $message->getAnimation());
-            $sth->bindValue(':game', $message->getGame());
-            $sth->bindValue(':photo', $t = $this->entitiesArrayToJson($message->getPhoto(), null));
-            $sth->bindValue(':sticker', $message->getSticker());
-            $sth->bindValue(':video', $message->getVideo());
-            $sth->bindValue(':voice', $message->getVoice());
-            $sth->bindValue(':video_note', $message->getVideoNote());
-            $sth->bindValue(':caption', $message->getCaption());
-            $sth->bindValue(':contact', $message->getContact());
-            $sth->bindValue(':location', $message->getLocation());
-            $sth->bindValue(':venue', $message->getVenue());
-            $sth->bindValue(':new_chat_members', $new_chat_members_ids);
-            $sth->bindValue(':left_chat_member', $left_chat_member_id);
-            $sth->bindValue(':new_chat_title', $message->getNewChatTitle());
-            $sth->bindValue(':new_chat_photo', $t = $this->entitiesArrayToJson($message->getNewChatPhoto(), null));
-            $sth->bindValue(':delete_chat_photo', $message->getDeleteChatPhoto());
-            $sth->bindValue(':group_chat_created', $message->getGroupChatCreated());
-            $sth->bindValue(':supergroup_chat_created', $message->getSupergroupChatCreated());
-            $sth->bindValue(':channel_chat_created', $message->getChannelChatCreated());
-            $sth->bindValue(':migrate_from_chat_id', $message->getMigrateFromChatId());
-            $sth->bindValue(':migrate_to_chat_id', $message->getMigrateToChatId());
-            $sth->bindValue(':pinned_message', $message->getPinnedMessage());
-            $sth->bindValue(':connected_website', $message->getConnectedWebsite());
-            $sth->bindValue(':passport_data', $message->getPassportData());
-
-            return $sth->execute();
-        } catch (PDOException $e) {
-            throw new TelegramException($e->getMessage());
+        $user_id = null;
+        if ($user instanceof User) {
+            $user_id = $user->getId();
         }
+        $chat_id = $chat->getId();
+
+        $reply_to_message    = $message->getReplyToMessage();
+        $reply_to_message_id = null;
+        if ($reply_to_message instanceof ReplyToMessage) {
+            $reply_to_message_id = $reply_to_message->getMessageId();
+            // please notice that, as explained in the documentation, reply_to_message don't contain other
+            // reply_to_message field so recursion deep is 1
+            $this->insertMessageRequest($reply_to_message);
+        }
+        $reply_to_chat_id = null;
+        if ($reply_to_message_id !== null) {
+            $reply_to_chat_id = $chat_id;
+        }
+
+        $entities = $this->entitiesArrayToJson($message->getEntities(), null);
+        $photo = $this->entitiesArrayToJson($message->getPhoto(), null);
+        $new_chat_photo = $this->entitiesArrayToJson($message->getNewChatPhoto(), null);
+
+        $this->insertMessageRequestToDb(
+            $message, $chat_id, $user_id, $date, $forward_from, $forward_from_chat, $forward_date,
+            $reply_to_chat_id, $reply_to_message_id, $entities, $photo, $new_chat_photo, $new_chat_members_ids, $left_chat_member_id
+        );
     }
+
+    /**
+     * @param Message $message
+     * @param         $chat_id
+     * @param         $user_id
+     * @param         $date
+     * @param         $forward_from
+     * @param         $forward_from_chat
+     * @param         $forward_date
+     * @param         $reply_to_chat_id
+     * @param         $reply_to_message_id
+     * @param         $entities
+     * @param         $photo
+     * @param         $new_chat_photo
+     * @param         $new_chat_members_ids
+     * @param         $left_chat_member_id
+     *
+     * @return bool
+     */
+    abstract protected function insertMessageRequestToDb(Message $message, $chat_id, $user_id, $date, $forward_from, $forward_from_chat, $forward_date,
+                                                         $reply_to_chat_id, $reply_to_message_id, $entities, $photo, $new_chat_photo, $new_chat_members_ids, $left_chat_member_id);
 
     /**
      * Insert Edited Message request in db
