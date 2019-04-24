@@ -251,7 +251,7 @@ abstract class DBBase
             return false;
         }
 
-        $status = $this->insertUserToDb($user);
+        $status = $this->insertUserToDb($user, $date);
 
         // Also insert the relationship to the chat into the user_chat table
         if ($chat instanceof Chat) {
@@ -264,9 +264,11 @@ abstract class DBBase
     /**
      * @param User $user
      *
+     * @param      $date
+     *
      * @return bool
      */
-    abstract protected function insertUserToDb(User $user);
+    abstract protected function insertUserToDb(User $user, $date);
 
     /**
      * @param User $user
@@ -317,7 +319,7 @@ abstract class DBBase
      *
      * @return bool
      */
-    abstract protected function insertChatToDb($chat, $id, $oldId, $type, $createdAt, $updatedAt);
+    abstract protected function insertChatToDb(Chat $chat, $id, $oldId, $type, $createdAt, $updatedAt);
 
     /**
      * Insert request into database

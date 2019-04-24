@@ -426,7 +426,67 @@ class DBMongo extends DBBase
      */
     public function getTelegramRequestCount($chat_id = null, $inline_message_id = null)
     {
-        // TODO: Implement getTelegramRequestCount() method.
+        if (!self::isDbConnected()) {
+            return false;
+        }
+
+
+        $date        = self::getTimestamp();
+        $date_minute = self::getTimestamp(strtotime('-1 minute'));
+
+        $limitPerSecAll = $this->database->selectCollection(TB_REQUEST_LIMITER)->aggregate([
+            [
+                '$match' => [
+                    'created_at' => [
+                        '$gte' => $date
+                    ]
+                ]
+            ],
+            [
+                '$group' => [
+                    '_id' => '$chat_id'
+                ]
+            ],
+            [
+                '$group' => [
+                    '_id' => null,
+                    'count' => ['$sum' => 1]
+                ]
+            ]
+
+        ]);
+
+        $limitPerSec = $this->database->selectCollection(TB_REQUEST_LIMITER)->count([
+            '$or' => [
+                [
+                    'created_at' => [
+                        '$gte' => $date
+                    ],
+                    'chat_id' => $chat_id,
+                    'inline_message_id' => null
+                ],
+                [
+                    'inline_message_id' => $inline_message_id,
+                    'chat_id' => null
+                ]
+            ]
+
+        ]);
+
+        $limitPerMinute = $this->database->selectCollection(TB_REQUEST_LIMITER)->count([
+            [
+                'created_at' => [
+                    '$gte' => $date_minute
+                ],
+                'chat_id' => $chat_id
+            ],
+        ]);
+
+        return [
+            'limit_per_sec_all' => $limitPerSecAll['count'],
+            'limit_per_sec' => $limitPerSec,
+            'limit_per_minute' => $limitPerMinute
+        ];
     }
 
     /**
@@ -439,7 +499,12 @@ class DBMongo extends DBBase
      */
     protected function insertTelegramRequestToDb($chat_id, $inline_message_id, $method, $created_at)
     {
-        // TODO: Implement insertTelegramRequestToDb() method.
+        return $this->database->selectCollection(TB_REQUEST_LIMITER)->insertOne([
+            'method' => $method,
+            'chat_id' => $chat_id,
+            'inline_message_id' => $inline_message_id,
+            'created_at' => self::getTimestamp()
+        ]);
     }
 
     /**
@@ -451,7 +516,7 @@ class DBMongo extends DBBase
      */
     protected function updateInDb($table, array $fields_values, array $where_fields_values)
     {
-        // TODO: Implement updateInDb() method.
+        return self::$database->selectCollection($table)->updateOne($where_fields_values, ['$set' => $fields_values]);
     }
 
     /**
@@ -466,7 +531,12 @@ class DBMongo extends DBBase
      */
     public function selectConversation($user_id, $chat_id, $limit = null)
     {
-        // TODO: Implement selectConversation() method.
+        $options = [];
+        if ($limit !== null) {
+            $options['limit'] = $limit;
+        }
+
+        return $this->database->selectCollection(TB_TELEGRAM_UPDATE)->find(['status' => 'active', 'chat_id' => $chat_id, 'user_id' => $user_id], $options)->toArray();
     }
 
     /**
@@ -481,7 +551,21 @@ class DBMongo extends DBBase
      */
     public function insertConversation($user_id, $chat_id, $command)
     {
-        // TODO: Implement insertConversation() method.
+        if (!$this->isDbConnected()) {
+            return false;
+        }
+        $date = $this->getTimestamp();
+
+        return self::$database->selectCollection(TB_CONVERSATION)->insertOne([
+            'status' => 'active',
+            'user_id' => $user_id,
+            'chat_id' => $chat_id,
+            'command' => $command,
+            'notes' => '[]',
+            'created_at' => $date,
+            'updated_at' => $date
+        ]);
+
     }
     /**
  * Select cached shortened URL from the database
@@ -495,7 +579,14 @@ class DBMongo extends DBBase
  */
     public function selectShortUrl($url, $user_id)
     {
-        // TODO: Implement selectShortUrl() method.
+
+        $options = [
+            'limit' => 1,
+            'sort' => ['created_at' => -1]
+        ];
+
+
+        return $this->database->selectCollection(TB_BOTAN_SHORTENER)->find(['user_id' => $user_id, 'url' => $url], $options)->toArray();
     }
 
     /**
@@ -512,6 +603,11 @@ class DBMongo extends DBBase
      */
     public function insertShortUrl($url, $user_id, $short_url)
     {
-        // TODO: Implement insertShortUrl() method.
+        return $this->database->selectCollection(TB_TELEGRAM_UPDATE)->insertOne([
+            'user_id' => $user_id,
+            'url' => $url,
+            'short_url' => $short_url,
+            'created_at' => $this->getTimestamp()
+        ]);
     }
 }
