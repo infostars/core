@@ -507,58 +507,54 @@ abstract class DBBase
             return false;
         }
 
-        try {
-            $sth = $this->pdo->prepare('
-                INSERT IGNORE INTO `' . TB_CALLBACK_QUERY . '`
-                (`id`, `user_id`, `chat_id`, `message_id`, `inline_message_id`, `data`, `created_at`)
-                VALUES
-                (:id, :user_id, :chat_id, :message_id, :inline_message_id, :data, :created_at)
-            ');
+        $date    = $this->getTimestamp();
+        $user_id = null;
 
-            $date    = $this->getTimestamp();
-            $user_id = null;
-
-            $user = $callback_query->getFrom();
-            if ($user instanceof User) {
-                $user_id = $user->getId();
-                $this->insertUser($user, $date);
-            }
-
-            $message    = $callback_query->getMessage();
-            $chat_id    = null;
-            $message_id = null;
-            if ($message instanceof Message) {
-                $chat_id    = $message->getChat()->getId();
-                $message_id = $message->getMessageId();
-
-                $is_message = $this->pdo->query('
-                    SELECT *
-                    FROM `' . TB_MESSAGE . '`
-                    WHERE `id` = ' . $message_id . '
-                      AND `chat_id` = ' . $chat_id . '
-                    LIMIT 1
-                ')->rowCount();
-
-                if ($is_message) {
-                    $this->insertEditedMessageRequest($message);
-                } else {
-                    $this->insertMessageRequest($message);
-                }
-            }
-
-            $sth->bindValue(':id', $callback_query->getId());
-            $sth->bindValue(':user_id', $user_id);
-            $sth->bindValue(':chat_id', $chat_id);
-            $sth->bindValue(':message_id', $message_id);
-            $sth->bindValue(':inline_message_id', $callback_query->getInlineMessageId());
-            $sth->bindValue(':data', $callback_query->getData());
-            $sth->bindValue(':created_at', $date);
-
-            return $sth->execute();
-        } catch (PDOException $e) {
-            throw new TelegramException($e->getMessage());
+        $user = $callback_query->getFrom();
+        if ($user instanceof User) {
+            $user_id = $user->getId();
+            $this->insertUser($user, $date);
         }
+
+        $message    = $callback_query->getMessage();
+        $chat_id    = null;
+        $message_id = null;
+        if ($message instanceof Message) {
+            $chat_id    = $message->getChat()->getId();
+            $message_id = $message->getMessageId();
+
+            $is_message = $this->isMessage($message_id, $chat_id);
+
+            if ($is_message) {
+                $this->insertEditedMessageRequest($message);
+            } else {
+                $this->insertMessageRequest($message);
+            }
+        }
+
+        $created_at = $date;
+
+        return $this->insertCallbackQueryRequestToDb($callback_query, $user_id, $chat_id, $message_id, $created_at);
     }
+
+    /**
+     * @param $message_id
+     * @param $chat_id
+     *
+     * @return bool
+     */
+    abstract protected function isMessage($message_id, $chat_id);
+
+    /**
+     * @param CallbackQuery $callback_query
+     * @param               $user_id
+     * @param               $chat_id
+     * @param               $message_id
+     * @param               $created_at
+     *
+     * @return bool
+     */
+    abstract protected function insertCallbackQueryRequestToDb(CallbackQuery $callback_query, $user_id, $chat_id, $message_id, $created_at);
 
     /**
      * Insert Message request in db
