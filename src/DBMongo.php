@@ -188,7 +188,7 @@ class DBMongo extends DBBase
      *
      * @return bool
      */
-    protected function insertChatToDb(Chat $chat, $id, $oldId, $type, $createdAt, $updatedAt)
+    protected function insertChatToDb(Chat $chat, $id, $oldId, $type, $createdAt, $updatedAt, $user = null)
     {
         $chatToSave = [
             'id' => $id,
@@ -200,6 +200,15 @@ class DBMongo extends DBBase
             'updated_at' => $updatedAt,
             'old_id' => $oldId
         ];
+
+        if ($user instanceof User && $user->getId() === $id) {
+            $chatToSave['user_id'] = $user->getId();
+            $chatToSave['is_bot'] = $user->getIsBot();
+            $chatToSave['username'] = $user->getUsername();
+            $chatToSave['first_name'] = $user->getFirstName();
+            $chatToSave['last_name'] = $user->getLastName();
+            $chatToSave['language_code'] = $user->getLanguageCode();
+        }
 
         try {
             $result = self::$database->selectCollection(TB_CHAT)->insertOne($chatToSave);
@@ -412,7 +421,74 @@ class DBMongo extends DBBase
      */
     protected function selectChatsFromDb($select)
     {
-        // TODO: Implement selectChatsFromDb() method.
+        $or = [];
+        if (!$select['groups'] || !$select['users'] || !$select['supergroups'] || !$select['channels']) {
+            if ($select['groups']) {
+                $or[] = ['type' => 'group'];
+            }
+            if ($select['supergroups']) {
+                $or[] = ['type' => 'supergroup'];
+            }
+            if ($select['channels']) {
+                $or[] = ['type' => 'channel'];
+            }
+            if ($select['users']) {
+                $or[] = ['type' => 'private'];
+            }
+        }
+
+        $and = [];
+        if (null !== $select['date_from']) {
+            $and[] = [
+                'updated_at' => ['$gte' => $select['date_from']]
+            ];
+        }
+
+        if (null !== $select['date_to']) {
+            $and[] = [
+                'updated_at' => ['$lte' => $select['date_to']]
+            ];
+        }
+
+        if (null !== $select['chat_id']) {
+            $and[] = [
+                'id' => $select['chat_id']
+            ];
+        }
+
+        if (null !== $select['text']) {
+            $and[] = [
+                'title' => ['$regex' => "/.*{$select['text']}.*/i"]
+            ];
+        }
+
+        if ($select['users']) {
+            $and[] = [
+                'first_name' => ['$regex' => "/.*{$select['text']}.*/i"],
+                'last_name' => ['$regex' => "/.*{$select['text']}.*/i"],
+                'username' => ['$regex' => "/.*{$select['text']}.*/i"],
+            ];
+        }
+
+        return $this->database->selectCollection(TB_CHAT)->aggregate([
+            [
+                '$match' => [
+                    '$and' => $and,
+                    '$or' => $or
+                ],
+            ],
+            [
+                '$project' => [
+                    'chat_id' => '$id',
+                    'chat_username' => '$username',
+                    'chat_created_at' => '$created_at',
+                    'chat_updated_at' => '$updated_at'
+                ]
+            ],
+            [
+                '$sort' => ['updated_at' => 1]
+            ]
+        ]);
     }
 
     /**

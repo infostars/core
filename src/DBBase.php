@@ -288,7 +288,7 @@ abstract class DBBase
      * @return bool If the insert was successful
      * @throws TelegramException
      */
-    public function insertChat(Chat $chat, $date = null, $migrate_to_chat_id = null)
+    public function insertChat(Chat $chat, $date = null, $migrate_to_chat_id = null, $user = null)
     {
         if (!$this->isDbConnected()) {
             return false;
@@ -306,7 +306,7 @@ abstract class DBBase
         $createdAt = $date;
         $updatedAt = $date;
 
-        $this->insertChatToDb($chat, $id, $oldId, $type, $createdAt, $updatedAt);
+        $this->insertChatToDb($chat, $id, $oldId, $type, $createdAt, $updatedAt, $user);
     }
 
     /**
@@ -319,7 +319,7 @@ abstract class DBBase
      *
      * @return bool
      */
-    abstract protected function insertChatToDb(Chat $chat, $id, $oldId, $type, $createdAt, $updatedAt);
+    abstract protected function insertChatToDb(Chat $chat, $id, $oldId, $type, $createdAt, $updatedAt, $user = null);
 
     /**
      * Insert request into database
@@ -576,12 +576,13 @@ abstract class DBBase
 
         $date = $this->getTimestamp($message->getDate());
 
+        $user = $message->getFrom();
+
         // Insert chat, update chat id in case it migrated
         $chat = $message->getChat();
-        $this->insertChat($chat, $date, $message->getMigrateToChatId());
+        $this->insertChat($chat, $date, $message->getMigrateToChatId(), $user);
 
         // Insert user and the relation with the chat
-        $user = $message->getFrom();
         if ($user instanceof User) {
             $this->insertUser($user, $date, $chat);
         }
@@ -687,13 +688,13 @@ abstract class DBBase
         }
 
         $edit_date = $this->getTimestamp($edited_message->getEditDate());
+        $user = $edited_message->getFrom();
 
         // Insert chat
         $chat = $edited_message->getChat();
-        $this->insertChat($chat, $edit_date);
+        $this->insertChat($chat, $edit_date, $user);
 
         // Insert user and the relation with the chat
-        $user = $edited_message->getFrom();
         if ($user instanceof User) {
             $this->insertUser($user, $edit_date, $chat);
         }
