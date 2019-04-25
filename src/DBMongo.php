@@ -105,7 +105,7 @@ class DBMongo extends DBBase
 
         $options['sort'] = ['id' => -1];
 
-        if ($limit !== null) {
+        if (is_int($limit)) {
             $options['limit'] = $limit;
         }
 
