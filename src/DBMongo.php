@@ -499,35 +499,60 @@ class DBMongo extends DBBase
             $and[] = [
                 'title' => ['$regex' => "/.*{$select['text']}.*/i"]
             ];
+            if ($select['users']) {
+                $and[] = [
+                    'first_name' => ['$regex' => "/.*{$select['text']}.*/i"],
+                    'last_name' => ['$regex' => "/.*{$select['text']}.*/i"],
+                    'username' => ['$regex' => "/.*{$select['text']}.*/i"],
+                ];
+            }
         }
 
-        if ($select['users']) {
-            $and[] = [
-                'first_name' => ['$regex' => "/.*{$select['text']}.*/i"],
-                'last_name' => ['$regex' => "/.*{$select['text']}.*/i"],
-                'username' => ['$regex' => "/.*{$select['text']}.*/i"],
-            ];
+        $filter = [];
+        if (!empty($and)) {
+            $filter['$and'] = $and;
         }
 
-        return $this->database->selectCollection(TB_CHAT)->aggregate([
-            [
-                '$match' => [
-                    '$and' => $and,
-                    '$or' => $or
-                ],
-            ],
-            [
-                '$project' => [
-                    'chat_id' => '$id',
-                    'chat_username' => '$username',
-                    'chat_created_at' => '$created_at',
-                    'chat_updated_at' => '$updated_at'
-                ]
-            ],
-            [
-                '$sort' => ['updated_at' => 1]
+        if (!empty($or)) {
+            $filter['$or'] = $or;
+        }
+
+        $aggregate[] = [
+            '$project' => [
+                'chat_id' => '$id',
+                'chat_username' => '$username',
+                'chat_created_at' => '$created_at',
+                'chat_updated_at' => '$updated_at'
             ]
-        ]);
+        ];
+        $aggregate[] = [
+            '$sort' => ['updated_at' => 1]
+        ];
+
+        $result = $this->database->selectCollection(TB_CHAT)->find($filter, ['sort' => ['updated_at' => 1]])->toArray();
+
+        $aliases = [
+            'id' => 'chat_id',
+            'username' => 'chat_username',
+            'created_at' => 'chat_created_at',
+            'updated_at' => 'chat_updated_at'
+        ];
+
+        foreach ($result as &$chat) {
+            $this->setAliaces($chat, $aliases);
+        }
+
+        return $result;
+    }
+
+    protected function setAliaces(&$input, $aliases)
+    {
+        foreach ($input as $key => $value) {
+            if (isset($aliases[$key])) {
+                unset($input[$key]);
+                $input[$aliases[$key]] = $value;
+            }
+        }
     }
 
     /**
