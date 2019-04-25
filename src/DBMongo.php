@@ -517,18 +517,6 @@ class DBMongo extends DBBase
             $filter['$or'] = $or;
         }
 
-        $aggregate[] = [
-            '$project' => [
-                'chat_id' => '$id',
-                'chat_username' => '$username',
-                'chat_created_at' => '$created_at',
-                'chat_updated_at' => '$updated_at'
-            ]
-        ];
-        $aggregate[] = [
-            '$sort' => ['updated_at' => 1]
-        ];
-
         $result = $this->database->selectCollection(TB_CHAT)->find($filter, ['sort' => ['updated_at' => 1]])->toArray();
 
         $aliases = [
