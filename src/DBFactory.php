@@ -46,4 +46,17 @@ class DBFactory
 
         return self::$instance;
     }
+
+    public static function initMongoDb(array $credentials, Telegram $telegram, $table_prefix = null)
+    {
+        if (self::$instance !== null) {
+            return self::$instance;
+        }
+
+        $db = new DBMongo();
+        $db->initialize($credentials, $telegram, $table_prefix);
+        self::$instance = $db;
+
+        return self::$instance;
+    }
 }

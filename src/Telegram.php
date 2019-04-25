@@ -187,6 +187,20 @@ class Telegram
     }
 
     /**
+     * @param array $credential
+     * @param null  $table_prefix
+     *
+     * @return $this
+     */
+    public function enableMongoDb(array $credential, $table_prefix = null)
+    {
+        DBFactory::initMongoDb($credential, $this, $table_prefix);
+        $this->mysql_enabled = true;
+
+        return $this;
+    }
+
+    /**
      * Initialize Database external connection
      *
      * @param PDO    $external_pdo_connection PDO database object

@@ -733,7 +733,7 @@ class DBMongo extends DBBase
 
     protected function getInsertOneResult(InsertOneResult $insertOneResult)
     {
-        $mongoId = $insertOneResult->getInsertedId()->getInsertedId()->__toString();
+        $mongoId = $insertOneResult->getInsertedId()->__toString();
 
         return $mongoId ?: false;
     }
