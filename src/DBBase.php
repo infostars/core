@@ -632,7 +632,7 @@ abstract class DBBase
         $photo = $this->entitiesArrayToJson($message->getPhoto(), null);
         $new_chat_photo = $this->entitiesArrayToJson($message->getNewChatPhoto(), null);
 
-        $this->insertMessageRequestToDb(
+        return $this->insertMessageRequestToDb(
             $message, $chat_id, $user_id, $date, $forward_from, $forward_from_chat, $forward_date,
             $reply_to_chat_id, $reply_to_message_id, $entities, $photo, $new_chat_photo, $new_chat_members_ids, $left_chat_member_id
         );
