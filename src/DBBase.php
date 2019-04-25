@@ -21,8 +21,6 @@ use Longman\TelegramBot\Entities\ReplyToMessage;
 use Longman\TelegramBot\Entities\Update;
 use Longman\TelegramBot\Entities\User;
 use Longman\TelegramBot\Exception\TelegramException;
-use PDO;
-use PDOException;
 
 abstract class DBBase
 {
@@ -32,13 +30,6 @@ abstract class DBBase
      * @var array
      */
     protected $mysql_credentials = [];
-
-    /**
-     * PDO object
-     *
-     * @var PDO
-     */
-    protected $pdo;
 
     /**
      * Table prefix
@@ -324,7 +315,6 @@ abstract class DBBase
     /**
      * Insert request into database
      *
-     * @todo $this->pdo->lastInsertId() - unsafe usage if expected previous insert fails?
      *
      * @param Update $update
      *
@@ -357,8 +347,7 @@ abstract class DBBase
         } elseif ($update_type === 'edited_message') {
             $edited_message = $update->getEditedMessage();
 
-            if ($this->insertEditedMessageRequest($edited_message)) {
-                $edited_message_local_id = $this->pdo->lastInsertId();
+            if ($edited_message_local_id = $this->insertEditedMessageRequest($edited_message)) {
                 $chat_id                 = $edited_message->getChat()->getId();
 
                 return $this->insertTelegramUpdate(
@@ -387,8 +376,7 @@ abstract class DBBase
         } elseif ($update_type === 'edited_channel_post') {
             $edited_channel_post = $update->getEditedChannelPost();
 
-            if ($this->insertEditedMessageRequest($edited_channel_post)) {
-                $edited_channel_post_local_id = $this->pdo->lastInsertId();
+            if ($edited_channel_post_local_id = $this->insertEditedMessageRequest($edited_channel_post)) {
                 $chat_id                      = $edited_channel_post->getChat()->getId();
 
                 return $this->insertTelegramUpdate(
@@ -417,9 +405,7 @@ abstract class DBBase
         } elseif ($update_type === 'chosen_inline_result') {
             $chosen_inline_result = $update->getChosenInlineResult();
 
-            if ($this->insertChosenInlineResultRequest($chosen_inline_result)) {
-                $chosen_inline_result_local_id = $this->pdo->lastInsertId();
-
+            if ($chosen_inline_result_local_id = $this->insertChosenInlineResultRequest($chosen_inline_result)) {
                 return $this->insertTelegramUpdate(
                     $update_id,
                     null,

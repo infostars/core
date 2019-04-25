@@ -27,7 +27,7 @@ class DBFactory
             return self::$instance;
         }
 
-        $db = new DB();
+        $db = new DBMySql();
         $db->initialize($credential, $telegram, $table_prefix, $encoding);
         self::$instance = $db;
 
@@ -40,7 +40,7 @@ class DBFactory
             return self::$instance;
         }
 
-        $db = new DB();
+        $db = new DBMySql();
         $db->externalInitialize($external_pdo_connection, $telegram, $table_prefix);
         self::$instance = $db;
 
