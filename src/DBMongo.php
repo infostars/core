@@ -12,6 +12,7 @@ use Longman\TelegramBot\Exception\TelegramException;
 use MongoDB\Client;
 use MongoDB\Database;
 use MongoDB\Driver\Exception\BulkWriteException as BulkWriteExceptionAlias;
+use MongoDB\InsertOneResult;
 
 class DBMongo extends DBBase
 {
@@ -111,6 +112,17 @@ class DBMongo extends DBBase
         return $this->database->selectCollection(TB_MESSAGE)->find([], $options)->toArray();
     }
 
+    /**
+     * @param      $id
+     * @param null $chat_id
+     * @param null $message_id
+     * @param null $inline_query_id
+     * @param null $chosen_inline_result_id
+     * @param null $callback_query_id
+     * @param null $edited_message_id
+     *
+     * @return bool|string
+     */
     protected function insertTelegramUpdateToDb(
         $id,
         $chat_id = null,
@@ -120,7 +132,7 @@ class DBMongo extends DBBase
         $callback_query_id = null,
         $edited_message_id = null
     ) {
-        return $this->database->selectCollection(TB_TELEGRAM_UPDATE)->insertOne([
+        $insertOneResult = $this->database->selectCollection(TB_TELEGRAM_UPDATE)->insertOne([
             'id' => $id,
             'chat_id' => $chat_id,
             'message_id' => $message_id,
@@ -129,12 +141,14 @@ class DBMongo extends DBBase
             'callback_query_id' => $callback_query_id,
             'edited_message_id' => $edited_message_id
         ]);
+
+        return $this->getInsertOneResult($insertOneResult);
     }
 
     /**
      * @param User $user
      *
-     * @return bool
+     * @return bool|string
      */
     protected function insertUserToDb(User $user, $date)
     {
@@ -150,32 +164,35 @@ class DBMongo extends DBBase
             'updated_at' => $date
         ];
         try {
-            $result = self::$database->selectCollection(TB_USER)->insertOne($userToSave);
+            $insertOneResult = $this->database->selectCollection(TB_USER)->insertOne($userToSave);
         } catch (BulkWriteExceptionAlias $exception) {
             if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
-                unset($userToSave['id']);
-                unset($userToSave['created_at']);
-                $result = self::$database->selectCollection(TB_USER)->updateOne(['id' => $user->getId()], [
-                    '$set' => $userToSave
-                ]);
+                unset($userToSave['id'], $userToSave['created_at']);
+                $this->database->selectCollection(TB_USER)->updateOne(['id' => $user->getId()], ['$set' => $userToSave]);
+
+                 return true;
             }
+
+            return false;
         }
 
-        return $result;
+        return $this->getInsertOneResult($insertOneResult);
     }
 
     /**
      * @param User $user
      * @param Chat $chat
      *
-     * @return bool
+     * @return bool|string
      */
     protected function insertUserChatRelation(User $user, Chat $chat)
     {
-        return $this->database->selectCollection(TB_USER_CHAT)->insertOne([
+        $insertOneResult = $this->database->selectCollection(TB_USER_CHAT)->insertOne([
             'user_id' => $user->getId(),
             'chat_id' => $chat->getId()
         ]);
+
+        return $this->getInsertOneResult($insertOneResult);
     }
 
     /**
@@ -186,7 +203,7 @@ class DBMongo extends DBBase
      * @param $createdAt
      * @param $updatedAt
      *
-     * @return bool
+     * @return bool|string
      */
     protected function insertChatToDb(Chat $chat, $id, $oldId, $type, $createdAt, $updatedAt, $user = null)
     {
@@ -211,18 +228,21 @@ class DBMongo extends DBBase
         }
 
         try {
-            $result = self::$database->selectCollection(TB_CHAT)->insertOne($chatToSave);
+            $insertOneResult = $this->database->selectCollection(TB_CHAT)->insertOne($chatToSave);
         } catch (BulkWriteExceptionAlias $exception) {
             if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
-                unset($chatToSave['created_at']);
-                unset($chatToSave['old_id']);
-                $result = self::$database->selectCollection(TB_CHAT)->updateOne(['id' => $chat->getId()], [
+                unset($chatToSave['created_at'], $chatToSave['old_id']);
+                $this->database->selectCollection(TB_CHAT)->updateOne(['id' => $chat->getId()], [
                     '$set' => $chatToSave
                 ]);
+
+                return true;
             }
+
+            return false;
         }
 
-        return $result;
+        return $this->getInsertOneResult($insertOneResult);
     }
 
     /**
@@ -230,7 +250,7 @@ class DBMongo extends DBBase
      *
      * @param InlineQuery $inline_query
      *
-     * @return bool If the insert was successful
+     * @return bool|string
      * @throws TelegramException
      */
     public function insertInlineQueryRequest(InlineQuery $inline_query)
@@ -248,7 +268,7 @@ class DBMongo extends DBBase
             $this->insertUser($user, $date);
         }
 
-        return self::$database->selectCollection(TB_INLINE_QUERY)->insertOne([
+        $insertOneResult = $this->database->selectCollection(TB_INLINE_QUERY)->insertOne([
             'id' => $inline_query->getId(),
             'user_id' => $user_id,
             'location' => $inline_query->getLocation(),
@@ -256,6 +276,8 @@ class DBMongo extends DBBase
             'offset' => $inline_query->getOffset(),
             'created_at' => $date
         ]);
+
+        return $this->getInsertOneResult($insertOneResult);
     }
 
     /**
@@ -263,14 +285,14 @@ class DBMongo extends DBBase
      * @param                    $user_id
      * @param                    $created_at
      *
-     * @return bool
+     * @return bool|string
      */
     protected function insertChosenInlineResultRequestToDb(
         ChosenInlineResult $chosen_inline_result,
         $user_id,
         $created_at
     ) {
-        return self::$database->selectCollection(TB_CHOSEN_INLINE_RESULT)->insertOne([
+        $insertOneResult = $this->database->selectCollection(TB_CHOSEN_INLINE_RESULT)->insertOne([
             'result_id' => $chosen_inline_result->getResultId(),
             'user_id' => $user_id,
             'location' => $chosen_inline_result->getLocation(),
@@ -278,6 +300,8 @@ class DBMongo extends DBBase
             'query' => $chosen_inline_result->getQuery(),
             'created_at' => $created_at
         ]);
+
+        return $this->getInsertOneResult($insertOneResult);
     }
 
     /**
@@ -298,7 +322,7 @@ class DBMongo extends DBBase
      * @param               $message_id
      * @param               $created_at
      *
-     * @return bool
+     * @return bool|string
      */
     protected function insertCallbackQueryRequestToDb(
         CallbackQuery $callback_query,
@@ -308,7 +332,7 @@ class DBMongo extends DBBase
         $created_at
     ) {
 
-        return self::$database->selectCollection(TB_CALLBACK_QUERY)->insertOne([
+        $insertOneResult = $this->database->selectCollection(TB_CALLBACK_QUERY)->insertOne([
             'id' => $callback_query->getId(),
             'user_id' => $user_id,
             'chat_id' => $chat_id,
@@ -317,6 +341,8 @@ class DBMongo extends DBBase
             'data' => $callback_query->getData(),
             'created_at' => $created_at
         ]);
+
+        return $this->getInsertOneResult($insertOneResult);
     }
 
     /**
@@ -335,7 +361,7 @@ class DBMongo extends DBBase
      * @param         $new_chat_members_ids
      * @param         $left_chat_member_id
      *
-     * @return bool
+     * @return bool|string
      */
     protected function insertMessageRequestToDb(
         Message $message,
@@ -353,7 +379,7 @@ class DBMongo extends DBBase
         $new_chat_members_ids,
         $left_chat_member_id
     ) {
-        return $this->database->selectCollection(TB_MESSAGE)->insertOne([
+        $insertOneResult = $this->database->selectCollection(TB_MESSAGE)->insertOne([
             'id' => $message->getMessageId(),
             'user_id' => $user_id,
             'chat_id' => $chat_id,
@@ -394,8 +420,19 @@ class DBMongo extends DBBase
             'connected_website' => $message->getConnectedWebsite(),
             'passport_data' => $message->getPassportData()
         ]);
+
+        return $this->getInsertOneResult($insertOneResult);
     }
 
+    /**
+     * @param Message $edited_message
+     * @param Chat    $chat
+     * @param         $user_id
+     * @param         $edit_date
+     * @param         $entities
+     *
+     * @return bool|string
+     */
     protected function insertEditedMessageRequestToDb(
         Message $edited_message,
         Chat $chat,
@@ -403,7 +440,7 @@ class DBMongo extends DBBase
         $edit_date,
         $entities
     ) {
-        return $this->database->selectCollection(TB_EDITED_MESSAGE)->insertOne([
+        $insertOneResult = $this->database->selectCollection(TB_EDITED_MESSAGE)->insertOne([
             'chat_id' => $chat->getId(),
             'message_id' => $edited_message->getMessageId(),
             'user_id' => $user_id,
@@ -412,6 +449,8 @@ class DBMongo extends DBBase
             'entities' => $entities,
             'caption' => $edited_message->getCaption()
         ]);
+
+        return $this->getInsertOneResult($insertOneResult);
     }
 
     /**
@@ -571,16 +610,18 @@ class DBMongo extends DBBase
      * @param $method
      * @param $created_at
      *
-     * @return bool
+     * @return bool|string
      */
     protected function insertTelegramRequestToDb($chat_id, $inline_message_id, $method, $created_at)
     {
-        return $this->database->selectCollection(TB_REQUEST_LIMITER)->insertOne([
+        $insertOneResult = $this->database->selectCollection(TB_REQUEST_LIMITER)->insertOne([
             'method' => $method,
             'chat_id' => $chat_id,
             'inline_message_id' => $inline_message_id,
             'created_at' => self::getTimestamp()
         ]);
+
+        return $this->getInsertOneResult($insertOneResult);
     }
 
     /**
@@ -592,7 +633,7 @@ class DBMongo extends DBBase
      */
     protected function updateInDb($table, array $fields_values, array $where_fields_values)
     {
-        return self::$database->selectCollection($table)->updateOne($where_fields_values, ['$set' => $fields_values]);
+        return $this->database->selectCollection($table)->updateOne($where_fields_values, ['$set' => $fields_values]);
     }
 
     /**
@@ -622,7 +663,7 @@ class DBMongo extends DBBase
      * @param string $chat_id
      * @param string $command
      *
-     * @return bool
+     * @return bool|string
      * @throws TelegramException
      */
     public function insertConversation($user_id, $chat_id, $command)
@@ -632,7 +673,7 @@ class DBMongo extends DBBase
         }
         $date = $this->getTimestamp();
 
-        return self::$database->selectCollection(TB_CONVERSATION)->insertOne([
+        $insertOneResult = $this->database->selectCollection(TB_CONVERSATION)->insertOne([
             'status' => 'active',
             'user_id' => $user_id,
             'chat_id' => $chat_id,
@@ -642,6 +683,7 @@ class DBMongo extends DBBase
             'updated_at' => $date
         ]);
 
+        return $this->getInsertOneResult($insertOneResult);
     }
     /**
  * Select cached shortened URL from the database
@@ -672,18 +714,27 @@ class DBMongo extends DBBase
      * @param string $user_id
      * @param string $short_url
      *
-     * @return bool
+     * @return bool|string
      * @throws TelegramException
      * @deprecated Botan.io service is no longer working
      *
      */
     public function insertShortUrl($url, $user_id, $short_url)
     {
-        return $this->database->selectCollection(TB_TELEGRAM_UPDATE)->insertOne([
+        $insertOneResult = $this->database->selectCollection(TB_TELEGRAM_UPDATE)->insertOne([
             'user_id' => $user_id,
             'url' => $url,
             'short_url' => $short_url,
             'created_at' => $this->getTimestamp()
         ]);
+
+        return $this->getInsertOneResult($insertOneResult);
+    }
+
+    protected function getInsertOneResult(InsertOneResult $insertOneResult)
+    {
+        $mongoId = $insertOneResult->getInsertedId()->getInsertedId()->__toString();
+
+        return $mongoId ?: false;
     }
 }
