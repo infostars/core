@@ -582,7 +582,7 @@ class DBMongo extends DBBase
                 ]
             ]
 
-        ]);
+        ])->toArray();
 
         $limitPerSec = $this->database->selectCollection(TB_REQUEST_LIMITER)->count([
             '$or' => [
@@ -602,18 +602,16 @@ class DBMongo extends DBBase
         ]);
 
         $limitPerMinute = $this->database->selectCollection(TB_REQUEST_LIMITER)->count([
-            [
                 'created_at' => [
                     '$gte' => $date_minute
                 ],
                 'chat_id' => $chat_id
-            ],
         ]);
 
         return [
-            'limit_per_sec_all' => $limitPerSecAll['count'],
-            'limit_per_sec' => $limitPerSec,
-            'limit_per_minute' => $limitPerMinute
+            'LIMIT_PER_SEC_ALL' => isset($limitPerSecAll[0]['count']) ? $limitPerSecAll[0]['count'] : 0,
+            'LIMIT_PER_SEC' => $limitPerSec,
+            'LIMIT_PER_MINUTE' => $limitPerMinute
         ];
     }
 
