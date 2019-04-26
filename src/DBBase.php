@@ -692,7 +692,7 @@ abstract class DBBase
 
         $entities = $this->entitiesArrayToJson($edited_message->getEntities(), null);
 
-        $this->insertEditedMessageRequestToDb($edited_message, $chat, $user_id, $edit_date, $entities);
+        return $this->insertEditedMessageRequestToDb($edited_message, $chat, $user_id, $edit_date, $entities);
     }
 
     abstract protected function insertEditedMessageRequestToDb(Message $edited_message, Chat $chat, $user_id, $edit_date, $entities);
