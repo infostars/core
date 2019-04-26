@@ -828,11 +828,15 @@ class DBMongo extends DBBase
 
         $options = [
             'limit' => 1,
-            'sort' => ['created_at' => -1]
+            'sort' => ['created_at' => -1],
+            'projection' => [
+                'short_url' => 1
+            ]
         ];
 
+        $result = $this->database->selectCollection(TB_BOTAN_SHORTENER)->find(['user_id' => $user_id, 'url' => $url], $options)->toArray();
 
-        return $this->database->selectCollection(TB_BOTAN_SHORTENER)->find(['user_id' => $user_id, 'url' => $url], $options)->toArray();
+        return isset($result[0]['short_url']) ? $result[0]['short_url'] : false;
     }
 
     /**
@@ -849,7 +853,7 @@ class DBMongo extends DBBase
      */
     public function insertShortUrl($url, $user_id, $short_url)
     {
-        $insertOneResult = $this->database->selectCollection(TB_TELEGRAM_UPDATE)->insertOne([
+        $insertOneResult = $this->database->selectCollection(TB_BOTAN_SHORTENER)->insertOne([
             'user_id' => $user_id,
             'url' => $url,
             'short_url' => $short_url,
