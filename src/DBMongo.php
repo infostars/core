@@ -665,7 +665,7 @@ class DBMongo extends DBBase
             $options['limit'] = $limit;
         }
 
-        return $this->database->selectCollection(TB_TELEGRAM_UPDATE)->find(['status' => 'active', 'chat_id' => $chat_id, 'user_id' => $user_id], $options)->toArray();
+        return $this->database->selectCollection(TB_CONVERSATION)->find(['status' => 'active', 'chat_id' => $chat_id, 'user_id' => $user_id], $options)->toArray();
     }
 
     /**
