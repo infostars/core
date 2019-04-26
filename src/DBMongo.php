@@ -645,7 +645,9 @@ class DBMongo extends DBBase
      */
     protected function updateInDb($table, array $fields_values, array $where_fields_values)
     {
-        return $this->database->selectCollection($table)->updateOne($where_fields_values, ['$set' => $fields_values]);
+        $updatedResult = $this->database->selectCollection($table)->updateOne($where_fields_values, ['$set' => $fields_values]);
+
+        return $updatedResult->isAcknowledged();
     }
 
     /**
