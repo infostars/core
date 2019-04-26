@@ -297,7 +297,7 @@ abstract class DBBase
         $createdAt = $date;
         $updatedAt = $date;
 
-        $this->insertChatToDb($chat, $id, $oldId, $type, $createdAt, $updatedAt, $user);
+        return $this->insertChatToDb($chat, $id, $oldId, $type, $createdAt, $updatedAt, $user);
     }
 
     /**
