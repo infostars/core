@@ -71,7 +71,7 @@ class DBMongo extends DBBase
      */
     public function selectTelegramUpdate($limit = null, $id = null)
     {
-        if (!self::isDbConnected()) {
+        if (!$this->isDbConnected()) {
             return false;
         }
 
@@ -117,7 +117,7 @@ class DBMongo extends DBBase
      */
     public function selectMessages($limit = null)
     {
-        if (!self::isDbConnected()) {
+        if (!$this->isDbConnected()) {
             return false;
         }
 
@@ -810,13 +810,13 @@ class DBMongo extends DBBase
      */
     public function getTelegramRequestCount($chat_id = null, $inline_message_id = null)
     {
-        if (!self::isDbConnected()) {
+        if (!$this->isDbConnected()) {
             return false;
         }
 
 
-        $date        = self::getTimestamp();
-        $date_minute = self::getTimestamp(strtotime('-1 minute'));
+        $date        = $this->getTimestamp();
+        $date_minute = $this->getTimestamp(strtotime('-1 minute'));
 
         try {
             $limitPerSecAll = $this->database->selectCollection(TB_REQUEST_LIMITER)->aggregate([
@@ -896,7 +896,7 @@ class DBMongo extends DBBase
                 'method' => $method,
                 'chat_id' => $chat_id,
                 'inline_message_id' => $inline_message_id,
-                'created_at' => self::getTimestamp()
+                'created_at' => $this->getTimestamp()
             ]);
         } catch (\Exception $exception) {
             $errorMsg = __METHOD__ . " {$exception->getMessage()}";
@@ -944,6 +944,10 @@ class DBMongo extends DBBase
      */
     public function selectConversation($user_id, $chat_id, $limit = null)
     {
+        if (!$this->isDbConnected()) {
+            return false;
+        }
+
         $options = [];
         if (is_int($limit)) {
             $options['limit'] = $limit;
@@ -1008,7 +1012,9 @@ class DBMongo extends DBBase
  */
     public function selectShortUrl($url, $user_id)
     {
-
+        if (!$this->isDbConnected()) {
+            return false;
+        }
         $options = [
             'limit' => 1,
             'sort' => ['created_at' => -1],
@@ -1044,6 +1050,9 @@ class DBMongo extends DBBase
      */
     public function insertShortUrl($url, $user_id, $short_url)
     {
+        if (!$this->isDbConnected()) {
+            return false;
+        }
         try {
             $insertOneResult = $this->database->selectCollection(TB_BOTAN_SHORTENER)->insertOne([
                 'user_id' => $user_id,
@@ -1075,6 +1084,9 @@ class DBMongo extends DBBase
      */
     public function getDbVersion()
     {
+        if (!$this->isDbConnected()) {
+            return false;
+        }
         $command = new Command(['buildinfo' => 1]);
         try {
             $result = $this->database->command($command)->toArray();
