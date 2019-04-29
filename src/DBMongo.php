@@ -12,11 +12,13 @@ use Longman\TelegramBot\Entities\User;
 use Longman\TelegramBot\Exception\TelegramException;
 use MongoDB\Client;
 use MongoDB\Database;
+use MongoDB\Driver\Command;
 use MongoDB\Driver\Exception\BulkWriteException as BulkWriteExceptionAlias;
 use MongoDB\InsertOneResult;
 
 class DBMongo extends DBBase
 {
+    protected $dbPublicName = 'mongodb';
 
     /**
      * @var Client
@@ -876,5 +878,16 @@ class DBMongo extends DBBase
         $mongoId = $insertOneResult->getInsertedId()->__toString();
 
         return $mongoId ?: false;
+    }
+
+    /**
+     * @return bool|string
+     */
+    public function getDbVersion()
+    {
+        $command = new Command(['buildinfo' => 1]);
+        $result = $this->database->command($command)->toArray();
+
+        return isset($result[0]['version']) ? $result[0]['version'] : false;
     }
 }

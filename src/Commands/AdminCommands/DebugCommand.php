@@ -48,7 +48,6 @@ class DebugCommand extends AdminCommand
      */
     public function execute()
     {
-        $pdo = DBFactory::getInstance()->getPdo();
         $message = $this->getMessage();
         $chat = $message->getChat();
         $text = strtolower($message->getText(true));
@@ -79,9 +78,9 @@ class DebugCommand extends AdminCommand
         PHP_INT_SIZE === 8 && $php_bit = ' (64bit)';
         $debug_info[] = sprintf('*PHP version:* `%1$s%2$s; %3$s; %4$s`', PHP_VERSION, $php_bit, PHP_SAPI, PHP_OS);
         $debug_info[] = sprintf('*Maximum PHP script execution time:* `%d seconds`', ini_get('max_execution_time'));
-
-        $mysql_version = $pdo ? $pdo->query('SELECT VERSION() AS version')->fetchColumn() : null;
-        $debug_info[] = sprintf('*MySQL version:* `%s`', $mysql_version ?: 'disabled');
+        $db = DBFactory::getInstance();
+        $dbVersion = $db->getDbVersion();
+        $debug_info[] = sprintf("*{$db->getDbPublicName()} version:* `%s`", $dbVersion ?: 'disabled');
 
         $debug_info[] = sprintf('*Operating System:* `%s`', php_uname());
 

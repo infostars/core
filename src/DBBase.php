@@ -25,13 +25,6 @@ use Longman\TelegramBot\Exception\TelegramException;
 abstract class DBBase
 {
     /**
-     * MySQL credentials
-     *
-     * @var array
-     */
-    protected $mysql_credentials = [];
-
-    /**
      * Table prefix
      *
      * @var string
@@ -49,6 +42,8 @@ abstract class DBBase
      * @var self
      */
     protected static $instance;
+
+    protected $dbPublicName = '';
 
 
     /**
@@ -78,7 +73,6 @@ abstract class DBBase
         $this->initDb($credentials, $encoding);
 
         $this->telegram          = $telegram;
-        $this->mysql_credentials = $credentials;
         $this->table_prefix      = $table_prefix;
         self::$instance          = $this;
 
@@ -88,6 +82,13 @@ abstract class DBBase
     }
 
     abstract protected function initDb(array $credentials, $encoding = 'utf8mb4');
+
+    abstract public function getDbVersion();
+
+    public function getDbPublicName()
+    {
+        return $this->dbPublicName;
+    }
 
     /**
      * @return DB|null

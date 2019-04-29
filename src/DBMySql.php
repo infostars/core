@@ -17,6 +17,7 @@ use PDOException;
 
 class DBMySql extends DBBase
 {
+    protected $dbPublicName = 'mysql';
 
     /**
      * @var PDO $pdo
@@ -1028,5 +1029,13 @@ class DBMySql extends DBBase
         } catch (Exception $e) {
             throw new TelegramException($e->getMessage());
         }
+    }
+
+    /**
+     * @return bool|string
+     */
+    public function getDbVersion()
+    {
+        return $this->pdo->query('SELECT VERSION() AS version')->fetchColumn();
     }
 }
