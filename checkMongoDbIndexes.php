@@ -297,17 +297,15 @@ foreach ($collections as $collectionName => $indexes) {
 
     foreach ($indexes['indexes'] as $index) {
         foreach ($listIndexes as $indexInfo) {
-            if ($indexInfo->getName() === '_id_') {
-                continue;
-            }
             if ($indexInfo->getKey() == $index['keys']) {
-                continue;
+                error_log("index: {$indexInfo->getName()} already exists!");
+
+                continue 2;
             }
-
-            $createdIndex = $dataBase->selectCollection($collectionName)->createIndex($index['keys'], $index['options']);
-
-            error_log("Created: {$createdIndex} on collection {$collectionName}");
         }
+        $createdIndex = $dataBase->selectCollection($collectionName)->createIndex($index['keys'], $index['options']);
+
+        error_log("Created index: {$createdIndex} on collection {$collectionName}");
     }
 }
 
