@@ -81,14 +81,6 @@ $collections = [
         'indexes' => [
             [
                 'keys' => [
-                    'id' => 1,
-                ],
-                'options' => [
-                    'unique' => true
-                ]
-            ],
-            [
-                'keys' => [
                     'user_id' => 1,
                 ],
                 'options' => [
@@ -105,6 +97,13 @@ $collections = [
                 ],
                 'options' => [
                     'unique' => true
+                ]
+            ],
+            [
+                'keys' => [
+                    'user_id' => 1,
+                ],
+                'options' => [
                 ]
             ],
             [
@@ -195,14 +194,6 @@ $collections = [
         'indexes' => [
             [
                 'keys' => [
-                    'id' => 1,
-                ],
-                'options' => [
-                    'unique' => true
-                ]
-            ],
-            [
-                'keys' => [
                     'user_id' => 1,
                 ],
                 'options' => [
@@ -276,14 +267,6 @@ $collections = [
         'indexes' => [
             [
                 'keys' => [
-                    'id' => 1,
-                ],
-                'options' => [
-                    'unique' => true
-                ]
-            ],
-            [
-                'keys' => [
                     'user_id' => 1
                 ],
                 'options' => [
@@ -304,31 +287,7 @@ $collections = [
                 ]
             ],
         ]
-    ],
-    'botan_shortener' => [
-        'indexes' => [
-            [
-                'keys' => [
-                    'id' => 1,
-                ],
-                'options' => [
-                    'unique' => true
-                ]
-            ]
-        ]
-    ],
-    'request_limiter' => [
-        'indexes' => [
-            [
-                'keys' => [
-                    'id' => 1,
-                ],
-                'options' => [
-                    'unique' => true
-                ]
-            ]
-        ]
-    ],
+    ]
 ];
 $client = new MongoDB\Client($uri, []);
 $dataBase = $client->selectDatabase($dbName);
