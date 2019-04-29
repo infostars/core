@@ -143,15 +143,23 @@ class DBMongo extends DBBase
         $callback_query_id = null,
         $edited_message_id = null
     ) {
-        $insertOneResult = $this->database->selectCollection(TB_TELEGRAM_UPDATE)->insertOne([
-            'id' => $id,
-            'chat_id' => $chat_id,
-            'message_id' => $message_id,
-            'inline_query_id' => $inline_query_id,
-            'chosen_inline_result_id' => $chosen_inline_result_id,
-            'callback_query_id' => $callback_query_id,
-            'edited_message_id' => $edited_message_id
-        ]);
+        try {
+            $insertOneResult = $this->database->selectCollection(TB_TELEGRAM_UPDATE)->insertOne([
+                'id' => $id,
+                'chat_id' => $chat_id,
+                'message_id' => $message_id,
+                'inline_query_id' => $inline_query_id,
+                'chosen_inline_result_id' => $chosen_inline_result_id,
+                'callback_query_id' => $callback_query_id,
+                'edited_message_id' => $edited_message_id
+            ]);
+        } catch (BulkWriteExceptionAlias $exception) {
+            if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
+                return true;
+            }
+
+            return false;
+        }
 
         return $this->getInsertOneResult($insertOneResult);
     }
@@ -287,14 +295,22 @@ class DBMongo extends DBBase
             $this->insertUser($user, $date);
         }
 
-        $insertOneResult = $this->database->selectCollection(TB_INLINE_QUERY)->insertOne([
-            'id' => $inline_query->getId(),
-            'user_id' => $user_id,
-            'location' => $inline_query->getLocation(),
-            'query' => $inline_query->getQuery(),
-            'offset' => $inline_query->getOffset(),
-            'created_at' => $date
-        ]);
+        try {
+            $insertOneResult = $this->database->selectCollection(TB_INLINE_QUERY)->insertOne([
+                'id' => $inline_query->getId(),
+                'user_id' => $user_id,
+                'location' => $inline_query->getLocation(),
+                'query' => $inline_query->getQuery(),
+                'offset' => $inline_query->getOffset(),
+                'created_at' => $date
+            ]);
+        } catch (BulkWriteExceptionAlias $exception) {
+            if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
+                return true;
+            }
+
+            return false;
+        }
 
         return $this->getInsertOneResult($insertOneResult);
     }
@@ -464,15 +480,23 @@ class DBMongo extends DBBase
         $created_at
     ) {
 
-        $insertOneResult = $this->database->selectCollection(TB_CALLBACK_QUERY)->insertOne([
-            'id' => $callback_query->getId(),
-            'user_id' => $user_id,
-            'chat_id' => $chat_id,
-            'message_id' => $message_id,
-            'inline_message_id' => $callback_query->getInlineMessageId(),
-            'data' => $callback_query->getData(),
-            'created_at' => $created_at
-        ]);
+        try {
+            $insertOneResult = $this->database->selectCollection(TB_CALLBACK_QUERY)->insertOne([
+                'id' => $callback_query->getId(),
+                'user_id' => $user_id,
+                'chat_id' => $chat_id,
+                'message_id' => $message_id,
+                'inline_message_id' => $callback_query->getInlineMessageId(),
+                'data' => $callback_query->getData(),
+                'created_at' => $created_at
+            ]);
+        } catch (BulkWriteExceptionAlias $exception) {
+            if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
+                return true;
+            }
+
+            return false;
+        }
 
         return $this->getInsertOneResult($insertOneResult);
     }
