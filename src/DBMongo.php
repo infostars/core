@@ -188,10 +188,18 @@ class DBMongo extends DBBase
      */
     protected function insertUserChatRelation(User $user, Chat $chat)
     {
-        $insertOneResult = $this->database->selectCollection(TB_USER_CHAT)->insertOne([
-            'user_id' => $user->getId(),
-            'chat_id' => $chat->getId()
-        ]);
+        try {
+            $insertOneResult = $this->database->selectCollection(TB_USER_CHAT)->insertOne([
+                'user_id' => $user->getId(),
+                'chat_id' => $chat->getId()
+            ]);
+        } catch (BulkWriteExceptionAlias $exception) {
+            if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
+                return true;
+            }
+
+            return false;
+        }
 
         return $this->getInsertOneResult($insertOneResult);
     }

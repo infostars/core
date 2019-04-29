@@ -3,7 +3,7 @@
 require __DIR__ . '/vendor/autoload.php';
 
 $uri = 'mongodb://localhost:27017';
-$dbName = 'test';
+$dbName = 'telegrambot';
 
 $collections = [
     'user' => [
