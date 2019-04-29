@@ -93,6 +93,14 @@ class DBMongo extends DBBase
     }
 
     /**
+     * @return Database
+     */
+    public function getDataBase()
+    {
+        return $this->database;
+    }
+
+    /**
      * Fetch message(s) from DB
      *
      * @param int $limit Limit the number of messages to fetch
@@ -503,49 +511,60 @@ class DBMongo extends DBBase
         $new_chat_members_ids,
         $left_chat_member_id
     ) {
-        $insertOneResult = $this->database->selectCollection(TB_MESSAGE)->insertOne([
-            'id' => $message->getMessageId(),
-            'user_id' => $user_id,
-            'chat_id' => $chat_id,
-            'date' => $date,
-            'forward_from' => $forward_from,
-            'forward_from_chat' => $forward_from_chat,
-            'forward_from_message_id' => $message->getForwardFromMessageId(),
-            'forward_date' => $forward_date,
-            'reply_to_chat' => $reply_to_chat_id,
-            'reply_to_message' => $reply_to_message_id,
-            'media_group_id' => $message->getMediaGroupId(),
-            'text' => $message->getText(),
-            'entities' => $entities,
-            'audio' => $message->getAudio(),
-            'document' => $message->getDocument(),
-            'animation' => $message->getAnimation(),
-            'game' => $message->getGame(),
-            'photo' => $photo,
-            'sticker' => $message->getSticker(),
-            'video' => $message->getVoice(),
-            'voice' => $message->getVoice(),
-            'video_note' => $message->getVideoNote(),
-            'caption' => $message->getCaption(),
-            'contact' => $message->getContact(),
-            'location' => $message->getLocation(),
-            'venue' => $message->getVenue(),
-            'new_chat_members' => $new_chat_members_ids,
-            'left_chat_member' => $left_chat_member_id,
-            'new_chat_title' => $message->getNewChatTitle(),
-            'new_chat_photo' => $new_chat_photo,
-            'delete_chat_photo' => $message->getDeleteChatPhoto(),
-            'group_chat_created' => $message->getGroupChatCreated(),
-            'supergroup_chat_created' => $message->getSupergroupChatCreated(),
-            'channel_chat_created' => $message->getChannelChatCreated(),
-            'migrate_from_chat_id' => $message->getMigrateFromChatId(),
-            'migrate_to_chat_id' => $message->getMigrateToChatId(),
-            'pinned_message' => $message->getPinnedMessage(),
-            'connected_website' => $message->getConnectedWebsite(),
-            'passport_data' => $message->getPassportData()
-        ]);
 
-        return $this->getInsertOneResult($insertOneResult);
+
+        try {
+            $insertOneResult = $this->database->selectCollection(TB_MESSAGE)->insertOne([
+                'id' => $message->getMessageId(),
+                'user_id' => $user_id,
+                'chat_id' => $chat_id,
+                'date' => $date,
+                'forward_from' => $forward_from,
+                'forward_from_chat' => $forward_from_chat,
+                'forward_from_message_id' => $message->getForwardFromMessageId(),
+                'forward_date' => $forward_date,
+                'reply_to_chat' => $reply_to_chat_id,
+                'reply_to_message' => $reply_to_message_id,
+                'media_group_id' => $message->getMediaGroupId(),
+                'text' => $message->getText(),
+                'entities' => $entities,
+                'audio' => $message->getAudio(),
+                'document' => $message->getDocument(),
+                'animation' => $message->getAnimation(),
+                'game' => $message->getGame(),
+                'photo' => $photo,
+                'sticker' => $message->getSticker(),
+                'video' => $message->getVoice(),
+                'voice' => $message->getVoice(),
+                'video_note' => $message->getVideoNote(),
+                'caption' => $message->getCaption(),
+                'contact' => $message->getContact(),
+                'location' => $message->getLocation(),
+                'venue' => $message->getVenue(),
+                'new_chat_members' => $new_chat_members_ids,
+                'left_chat_member' => $left_chat_member_id,
+                'new_chat_title' => $message->getNewChatTitle(),
+                'new_chat_photo' => $new_chat_photo,
+                'delete_chat_photo' => $message->getDeleteChatPhoto(),
+                'group_chat_created' => $message->getGroupChatCreated(),
+                'supergroup_chat_created' => $message->getSupergroupChatCreated(),
+                'channel_chat_created' => $message->getChannelChatCreated(),
+                'migrate_from_chat_id' => $message->getMigrateFromChatId(),
+                'migrate_to_chat_id' => $message->getMigrateToChatId(),
+                'pinned_message' => $message->getPinnedMessage(),
+                'connected_website' => $message->getConnectedWebsite(),
+                'passport_data' => $message->getPassportData()
+            ]);
+            $result = $this->getInsertOneResult($insertOneResult);
+        } catch (BulkWriteExceptionAlias $exception) {
+            if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
+                return true;
+            }
+
+            return false;
+        }
+
+        return $result;
     }
 
     /**
