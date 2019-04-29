@@ -13,7 +13,6 @@ use Longman\TelegramBot\Exception\TelegramException;
 use MongoDB\Client;
 use MongoDB\Database;
 use MongoDB\Driver\Command;
-use MongoDB\Driver\Exception\BulkWriteException as BulkWriteExceptionAlias;
 use MongoDB\InsertOneResult;
 
 class DBMongo extends DBBase
@@ -89,7 +88,15 @@ class DBMongo extends DBBase
             $options['limit'] = $limit;
         }
 
-        return $this->database->selectCollection(TB_TELEGRAM_UPDATE)->find($filter, $options)->toArray();
+        try {
+            return $this->database->selectCollection(TB_TELEGRAM_UPDATE)->find($filter, $options)->toArray();
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
     }
 
     /**
@@ -120,7 +127,15 @@ class DBMongo extends DBBase
             $options['limit'] = $limit;
         }
 
-        return $this->database->selectCollection(TB_MESSAGE)->find([], $options)->toArray();
+        try {
+            return $this->database->selectCollection(TB_MESSAGE)->find([], $options)->toArray();
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
     }
 
     /**
@@ -133,6 +148,7 @@ class DBMongo extends DBBase
      * @param null $edited_message_id
      *
      * @return bool|string
+     * @throws TelegramException
      */
     protected function insertTelegramUpdateToDb(
         $id,
@@ -153,12 +169,16 @@ class DBMongo extends DBBase
                 'callback_query_id' => $callback_query_id,
                 'edited_message_id' => $edited_message_id
             ]);
-        } catch (BulkWriteExceptionAlias $exception) {
+        } catch (\Exception $exception) {
             if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
                 return true;
             }
 
-            return false;
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
         }
 
         return $this->getInsertOneResult($insertOneResult);
@@ -184,7 +204,7 @@ class DBMongo extends DBBase
         ];
         try {
             $insertOneResult = $this->database->selectCollection(TB_USER)->insertOne($userToSave);
-        } catch (BulkWriteExceptionAlias $exception) {
+        } catch (\Exception $exception) {
             if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
                 unset($userToSave['id'], $userToSave['created_at']);
                 $this->database->selectCollection(TB_USER)->updateOne(['id' => $user->getId()], ['$set' => $userToSave]);
@@ -192,7 +212,11 @@ class DBMongo extends DBBase
                  return true;
             }
 
-            return false;
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
         }
 
         return $this->getInsertOneResult($insertOneResult);
@@ -203,6 +227,7 @@ class DBMongo extends DBBase
      * @param Chat $chat
      *
      * @return bool|string
+     * @throws TelegramException
      */
     protected function insertUserChatRelation(User $user, Chat $chat)
     {
@@ -211,12 +236,16 @@ class DBMongo extends DBBase
                 'user_id' => $user->getId(),
                 'chat_id' => $chat->getId()
             ]);
-        } catch (BulkWriteExceptionAlias $exception) {
+        } catch (\Exception $exception) {
             if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
                 return true;
             }
 
-            return false;
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
         }
 
         return $this->getInsertOneResult($insertOneResult);
@@ -231,6 +260,7 @@ class DBMongo extends DBBase
      * @param $updatedAt
      *
      * @return bool|string
+     * @throws TelegramException
      */
     protected function insertChatToDb(Chat $chat, $id, $oldId, $type, $createdAt, $updatedAt, $user = null)
     {
@@ -256,7 +286,7 @@ class DBMongo extends DBBase
 
         try {
             $insertOneResult = $this->database->selectCollection(TB_CHAT)->insertOne($chatToSave);
-        } catch (BulkWriteExceptionAlias $exception) {
+        } catch (\Exception $exception) {
             if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
                 unset($chatToSave['created_at'], $chatToSave['old_id']);
                 $this->database->selectCollection(TB_CHAT)->updateOne(['id' => $chat->getId()], [
@@ -266,7 +296,11 @@ class DBMongo extends DBBase
                 return true;
             }
 
-            return false;
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
         }
 
         return $this->getInsertOneResult($insertOneResult);
@@ -304,12 +338,16 @@ class DBMongo extends DBBase
                 'offset' => $inline_query->getOffset(),
                 'created_at' => $date
             ]);
-        } catch (BulkWriteExceptionAlias $exception) {
+        } catch (\Exception $exception) {
             if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
                 return true;
             }
 
-            return false;
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
         }
 
         return $this->getInsertOneResult($insertOneResult);
@@ -434,20 +472,30 @@ class DBMongo extends DBBase
      * @param                    $created_at
      *
      * @return bool|string
+     * @throws TelegramException
      */
     protected function insertChosenInlineResultRequestToDb(
         ChosenInlineResult $chosen_inline_result,
         $user_id,
         $created_at
     ) {
-        $insertOneResult = $this->database->selectCollection(TB_CHOSEN_INLINE_RESULT)->insertOne([
-            'result_id' => $chosen_inline_result->getResultId(),
-            'user_id' => $user_id,
-            'location' => $chosen_inline_result->getLocation(),
-            'inline_message_id' => $chosen_inline_result->getInlineMessageId(),
-            'query' => $chosen_inline_result->getQuery(),
-            'created_at' => $created_at
-        ]);
+        try {
+            $insertOneResult = $this->database->selectCollection(TB_CHOSEN_INLINE_RESULT)->insertOne([
+                'result_id' => $chosen_inline_result->getResultId(),
+                'user_id' => $user_id,
+                'location' => $chosen_inline_result->getLocation(),
+                'inline_message_id' => $chosen_inline_result->getInlineMessageId(),
+                'query' => $chosen_inline_result->getQuery(),
+                'created_at' => $created_at
+            ]);
+
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
 
         return $this->getInsertOneResult($insertOneResult);
     }
@@ -460,7 +508,15 @@ class DBMongo extends DBBase
      */
     protected function isMessage($message_id, $chat_id)
     {
-        return (bool) $this->database->selectCollection(TB_MESSAGE)->count(['id' => $message_id, 'chat_id' => $chat_id]);
+        try {
+            return (bool) $this->database->selectCollection(TB_MESSAGE)->count(['id' => $message_id, 'chat_id' => $chat_id]);
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
     }
 
     /**
@@ -471,6 +527,7 @@ class DBMongo extends DBBase
      * @param               $created_at
      *
      * @return bool|string
+     * @throws TelegramException
      */
     protected function insertCallbackQueryRequestToDb(
         CallbackQuery $callback_query,
@@ -490,12 +547,15 @@ class DBMongo extends DBBase
                 'data' => $callback_query->getData(),
                 'created_at' => $created_at
             ]);
-        } catch (BulkWriteExceptionAlias $exception) {
+        } catch (\Exception $exception) {
             if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
                 return true;
             }
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
 
-            return false;
+            throw new TelegramException($errorMsg);
         }
 
         return $this->getInsertOneResult($insertOneResult);
@@ -518,6 +578,7 @@ class DBMongo extends DBBase
      * @param         $left_chat_member_id
      *
      * @return bool|string
+     * @throws TelegramException
      */
     protected function insertMessageRequestToDb(
         Message $message,
@@ -580,12 +641,16 @@ class DBMongo extends DBBase
                 'passport_data' => $message->getPassportData()
             ]);
             $result = $this->getInsertOneResult($insertOneResult);
-        } catch (BulkWriteExceptionAlias $exception) {
+        } catch (\Exception $exception) {
             if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
                 return true;
             }
 
-            return false;
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
         }
 
         return $result;
@@ -599,6 +664,7 @@ class DBMongo extends DBBase
      * @param         $entities
      *
      * @return bool|string
+     * @throws TelegramException
      */
     protected function insertEditedMessageRequestToDb(
         Message $edited_message,
@@ -607,15 +673,25 @@ class DBMongo extends DBBase
         $edit_date,
         $entities
     ) {
-        $insertOneResult = $this->database->selectCollection(TB_EDITED_MESSAGE)->insertOne([
-            'chat_id' => $chat->getId(),
-            'message_id' => $edited_message->getMessageId(),
-            'user_id' => $user_id,
-            'edit_date' => $edit_date,
-            'text' => $edited_message->getText(),
-            'entities' => $entities,
-            'caption' => $edited_message->getCaption()
-        ]);
+
+        try {
+            $insertOneResult = $this->database->selectCollection(TB_EDITED_MESSAGE)->insertOne([
+                'chat_id' => $chat->getId(),
+                'message_id' => $edited_message->getMessageId(),
+                'user_id' => $user_id,
+                'edit_date' => $edit_date,
+                'text' => $edited_message->getText(),
+                'entities' => $entities,
+                'caption' => $edited_message->getCaption()
+            ]);
+
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
 
         return $this->getInsertOneResult($insertOneResult);
     }
@@ -624,6 +700,7 @@ class DBMongo extends DBBase
      * @param $select array
      *
      * @return array|bool
+     * @throws TelegramException
      */
     protected function selectChatsFromDb($select)
     {
@@ -684,7 +761,15 @@ class DBMongo extends DBBase
             $filter['$or'] = $or;
         }
 
-        $result = $this->database->selectCollection(TB_CHAT)->find($filter, ['sort' => ['updated_at' => 1]])->toArray();
+        try {
+            $result = $this->database->selectCollection(TB_CHAT)->find($filter, ['sort' => ['updated_at' => 1]])->toArray();
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
 
         $aliases = [
             'id' => 'chat_id',
@@ -700,6 +785,10 @@ class DBMongo extends DBBase
         return $result;
     }
 
+    /**
+     * @param $input
+     * @param $aliases
+     */
     protected function setAliaces(&$input, $aliases)
     {
         foreach ($input as $key => $value) {
@@ -729,29 +818,30 @@ class DBMongo extends DBBase
         $date        = self::getTimestamp();
         $date_minute = self::getTimestamp(strtotime('-1 minute'));
 
-        $limitPerSecAll = $this->database->selectCollection(TB_REQUEST_LIMITER)->aggregate([
-            [
-                '$match' => [
-                    'created_at' => [
-                        '$gte' => $date
+        try {
+            $limitPerSecAll = $this->database->selectCollection(TB_REQUEST_LIMITER)->aggregate([
+                [
+                    '$match' => [
+                        'created_at' => [
+                            '$gte' => $date
+                        ]
+                    ]
+                ],
+                [
+                    '$group' => [
+                        '_id' => '$chat_id'
+                    ]
+                ],
+                [
+                    '$group' => [
+                        '_id' => null,
+                        'count' => ['$sum' => 1]
                     ]
                 ]
-            ],
-            [
-                '$group' => [
-                    '_id' => '$chat_id'
-                ]
-            ],
-            [
-                '$group' => [
-                    '_id' => null,
-                    'count' => ['$sum' => 1]
-                ]
-            ]
 
-        ])->toArray();
+            ])->toArray();
 
-        $limitPerSec = $this->database->selectCollection(TB_REQUEST_LIMITER)->count([
+            $limitPerSec = $this->database->selectCollection(TB_REQUEST_LIMITER)->count([
                 [
                     'created_at' => [
                         '$gte' => $date
@@ -767,14 +857,21 @@ class DBMongo extends DBBase
                         'chat_id' => null
                     ]
                 ]
-        ]);
+            ]);
 
-        $limitPerMinute = $this->database->selectCollection(TB_REQUEST_LIMITER)->count([
+            $limitPerMinute = $this->database->selectCollection(TB_REQUEST_LIMITER)->count([
                 'created_at' => [
                     '$gte' => $date_minute
                 ],
                 'chat_id' => $chat_id
-        ]);
+            ]);
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
 
         return [
             'LIMIT_PER_SEC_ALL' => isset($limitPerSecAll[0]['count']) ? $limitPerSecAll[0]['count'] : 0,
@@ -790,15 +887,24 @@ class DBMongo extends DBBase
      * @param $created_at
      *
      * @return bool|string
+     * @throws TelegramException
      */
     protected function insertTelegramRequestToDb($chat_id, $inline_message_id, $method, $created_at)
     {
-        $insertOneResult = $this->database->selectCollection(TB_REQUEST_LIMITER)->insertOne([
-            'method' => $method,
-            'chat_id' => $chat_id,
-            'inline_message_id' => $inline_message_id,
-            'created_at' => self::getTimestamp()
-        ]);
+        try {
+            $insertOneResult = $this->database->selectCollection(TB_REQUEST_LIMITER)->insertOne([
+                'method' => $method,
+                'chat_id' => $chat_id,
+                'inline_message_id' => $inline_message_id,
+                'created_at' => self::getTimestamp()
+            ]);
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
 
         return $this->getInsertOneResult($insertOneResult);
     }
@@ -809,10 +915,19 @@ class DBMongo extends DBBase
      * @param array $where_fields_values
      *
      * @return bool
+     * @throws TelegramException
      */
     protected function updateInDb($table, array $fields_values, array $where_fields_values)
     {
-        $updatedResult = $this->database->selectCollection($table)->updateOne($where_fields_values, ['$set' => $fields_values]);
+        try {
+            $updatedResult = $this->database->selectCollection($table)->updateOne($where_fields_values, ['$set' => $fields_values]);
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
 
         return $updatedResult->isAcknowledged();
     }
@@ -833,8 +948,15 @@ class DBMongo extends DBBase
         if (is_int($limit)) {
             $options['limit'] = $limit;
         }
+        try {
+            return $this->database->selectCollection(TB_CONVERSATION)->find(['status' => 'active', 'chat_id' => $chat_id, 'user_id' => $user_id], $options)->toArray();
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
 
-        return $this->database->selectCollection(TB_CONVERSATION)->find(['status' => 'active', 'chat_id' => $chat_id, 'user_id' => $user_id], $options)->toArray();
+            throw new TelegramException($errorMsg);
+        }
     }
 
     /**
@@ -854,15 +976,23 @@ class DBMongo extends DBBase
         }
         $date = $this->getTimestamp();
 
-        $insertOneResult = $this->database->selectCollection(TB_CONVERSATION)->insertOne([
-            'status' => 'active',
-            'user_id' => $user_id,
-            'chat_id' => $chat_id,
-            'command' => $command,
-            'notes' => '[]',
-            'created_at' => $date,
-            'updated_at' => $date
-        ]);
+        try {
+            $insertOneResult = $this->database->selectCollection(TB_CONVERSATION)->insertOne([
+                'status' => 'active',
+                'user_id' => $user_id,
+                'chat_id' => $chat_id,
+                'command' => $command,
+                'notes' => '[]',
+                'created_at' => $date,
+                'updated_at' => $date
+            ]);
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
 
         return $this->getInsertOneResult($insertOneResult);
     }
@@ -887,7 +1017,15 @@ class DBMongo extends DBBase
             ]
         ];
 
-        $result = $this->database->selectCollection(TB_BOTAN_SHORTENER)->find(['user_id' => $user_id, 'url' => $url], $options)->toArray();
+        try {
+            $result = $this->database->selectCollection(TB_BOTAN_SHORTENER)->find(['user_id' => $user_id, 'url' => $url], $options)->toArray();
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
 
         return isset($result[0]['short_url']) ? $result[0]['short_url'] : false;
     }
@@ -906,12 +1044,20 @@ class DBMongo extends DBBase
      */
     public function insertShortUrl($url, $user_id, $short_url)
     {
-        $insertOneResult = $this->database->selectCollection(TB_BOTAN_SHORTENER)->insertOne([
-            'user_id' => $user_id,
-            'url' => $url,
-            'short_url' => $short_url,
-            'created_at' => $this->getTimestamp()
-        ]);
+        try {
+            $insertOneResult = $this->database->selectCollection(TB_BOTAN_SHORTENER)->insertOne([
+                'user_id' => $user_id,
+                'url' => $url,
+                'short_url' => $short_url,
+                'created_at' => $this->getTimestamp()
+            ]);
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
 
         return $this->getInsertOneResult($insertOneResult);
     }
@@ -925,11 +1071,20 @@ class DBMongo extends DBBase
 
     /**
      * @return bool|string
+     * @throws TelegramException
      */
     public function getDbVersion()
     {
         $command = new Command(['buildinfo' => 1]);
-        $result = $this->database->command($command)->toArray();
+        try {
+            $result = $this->database->command($command)->toArray();
+        } catch (\Exception $exception) {
+            $errorMsg = __METHOD__ . " {$exception->getMessage()}";
+            TelegramLog::error($errorMsg);
+            error_log($errorMsg);
+
+            throw new TelegramException($errorMsg);
+        }
 
         return isset($result[0]['version']) ? $result[0]['version'] : false;
     }
