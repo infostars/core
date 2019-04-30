@@ -13,6 +13,7 @@ namespace Longman\TelegramBot\Commands\AdminCommands;
 use Longman\TelegramBot\Commands\AdminCommand;
 use Longman\TelegramBot\DB;
 use Longman\TelegramBot\DBFactory;
+use Longman\TelegramBot\DBMongo;
 use Longman\TelegramBot\Exception\TelegramException;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\TelegramLog;
@@ -378,6 +379,11 @@ class CleanupCommand extends AdminCommand
             'chat_id'    => $user_id,
             'parse_mode' => 'Markdown',
         ];
+        $db = DBFactory::getInstance();
+        if ($db instanceof DBMongo) {
+            $data['text'] = 'Cleanup disabled for mongodb!';
+            return Request::sendMessage($data);
+        }
 
         $settings = $this->getSettings($text);
         $queries  = $this->getQueries($settings);
@@ -398,7 +404,7 @@ class CleanupCommand extends AdminCommand
         Request::sendMessage($data);
 
         $rows = 0;
-        $pdo  = DBFactory::getInstance()->getPdo();
+        $pdo  = $db->getPdo();
         try {
             $pdo->beginTransaction();
 
