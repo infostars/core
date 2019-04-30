@@ -1,15 +1,21 @@
 {
-    "name": "longman/telegram-bot",
+    "name": "infostars/telegram-bot-core-mongodb",
     "type": "library",
     "description": "PHP Telegram bot",
     "keywords": ["telegram", "bot", "api"],
     "license": "MIT",
-    "homepage": "https://github.com/php-telegram-bot/core",
+    "homepage": "https://github.com/infostars/telegram-bot-core-mongodb",
     "support": {
-        "issues": "https://github.com/php-telegram-bot/core/issues",
-        "source": "https://github.com/php-telegram-bot/core"
+        "issues": "https://github.com/infostars/telegram-bot-core-mongodb/issues",
+        "source": "https://github.com/infostars/telegram-bot-core-mongodb"
     },
     "authors": [
+        {
+            "name": "Ildar Saitkulov",
+            "email": "saitkulovim@gmail.com",
+            "homepage": "http://saitkulov.me",
+            "role": "Developer"
+        },
         {
             "name": "Avtandil Kikabidze aka LONGMAN",
             "email": "akalongman@gmail.com",
