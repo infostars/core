@@ -842,19 +842,23 @@ class DBMongo extends DBBase
             ])->toArray();
 
             $limitPerSec = $this->database->selectCollection(TB_REQUEST_LIMITER)->count([
-                [
-                    'created_at' => [
-                        '$gte' => $date
-                    ]
-                ],
-                '$or' => [
+                '$and' => [
                     [
-                        'chat_id' => $chat_id,
-                        'inline_message_id' => null
+                        'created_at' => [
+                            '$gte' => $date
+                        ]
                     ],
                     [
-                        'inline_message_id' => $inline_message_id,
-                        'chat_id' => null
+                        '$or' => [
+                            [
+                                'chat_id' => $chat_id,
+                                'inline_message_id' => null
+                            ],
+                            [
+                                'inline_message_id' => $inline_message_id,
+                                'chat_id' => null
+                            ]
+                        ]
                     ]
                 ]
             ]);
