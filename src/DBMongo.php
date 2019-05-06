@@ -288,7 +288,7 @@ class DBMongo extends DBBase
             $insertOneResult = $this->database->selectCollection(TB_CHAT)->insertOne($chatToSave);
         } catch (\Exception $exception) {
             if (strpos($exception->getMessage(), 'duplicate key error') !== false) {
-                unset($chatToSave['created_at'], $chatToSave['old_id']);
+                unset($chatToSave['created_at'], $chatToSave['old_id'], $chatToSave['id']);
                 $this->database->selectCollection(TB_CHAT)->updateOne(['id' => $chat->getId()], [
                     '$set' => $chatToSave
                 ]);
