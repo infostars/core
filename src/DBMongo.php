@@ -984,16 +984,18 @@ class DBMongo extends DBBase
         }
         $date = $this->getTimestamp();
 
+        $conversation = [
+            'status' => 'active',
+            'user_id' => $user_id,
+            'chat_id' => $chat_id,
+            'command' => $command,
+            'notes' => '[]',
+            'created_at' => $date,
+            'updated_at' => $date
+        ];
+        $conversation['id'] = $this->generateId($conversation);
         try {
-            $insertOneResult = $this->database->selectCollection(TB_CONVERSATION)->insertOne([
-                'status' => 'active',
-                'user_id' => $user_id,
-                'chat_id' => $chat_id,
-                'command' => $command,
-                'notes' => '[]',
-                'created_at' => $date,
-                'updated_at' => $date
-            ]);
+            $insertOneResult = $this->database->selectCollection(TB_CONVERSATION)->insertOne($conversation);
         } catch (\Exception $exception) {
             $errorMsg = __METHOD__ . " {$exception->getMessage()}";
             TelegramLog::error($errorMsg);
@@ -1004,16 +1006,27 @@ class DBMongo extends DBBase
 
         return $this->getInsertOneResult($insertOneResult);
     }
+
+    public function generateId(array $itemData = null)
+    {
+        $id = microtime(true).json_encode($_SERVER);
+        if ($itemData !== null) {
+            $id .= json_encode($itemData);
+        }
+
+        return md5($id);
+    }
+
     /**
- * Select cached shortened URL from the database
- *
- * @param string $url
- * @param string $user_id
- *
- * @return array|bool
- * @throws TelegramException
- * @deprecated Botan.io service is no longer working
- */
+     * Select cached shortened URL from the database
+     *
+     * @param string $url
+     * @param string $user_id
+     *
+     * @return array|bool
+     * @throws TelegramException
+     * @deprecated Botan.io service is no longer working
+     */
     public function selectShortUrl($url, $user_id)
     {
         if (!$this->isDbConnected()) {
