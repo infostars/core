@@ -568,7 +568,7 @@ abstract class DBBase
 
         // Insert chat
         $chat = $edited_message->getChat();
-        $this->insertChat($chat, $edit_date, $user);
+        $this->insertChat($chat, $edit_date, null, $user);
 
         // Insert user and the relation with the chat
         if ($user instanceof User) {
