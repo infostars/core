@@ -30,7 +30,6 @@
     ],
     "require": {
         "php": "^5.5|^7.0",
-        "ext-pdo": "*",
         "ext-curl": "*",
         "ext-json": "*",
         "ext-mbstring": "*",
