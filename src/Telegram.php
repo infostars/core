@@ -96,13 +96,6 @@ class Telegram
     protected $mysql_enabled = false;
 
     /**
-     * PDO object
-     *
-     * @var \PDO
-     */
-    protected $pdo;
-
-    /**
      * Commands config
      *
      * @var array
@@ -187,8 +180,21 @@ class Telegram
      */
     public function enableMySql(array $credential, $table_prefix = null, $encoding = 'utf8mb4')
     {
-        $this->pdo = DB::initialize($credential, $this, $table_prefix, $encoding);
-        ConversationDB::initializeConversation();
+        DBFactory::initMysql($credential, $this, $table_prefix, $encoding);
+        $this->mysql_enabled = true;
+
+        return $this;
+    }
+
+    /**
+     * @param array $credential
+     * @param null  $table_prefix
+     *
+     * @return $this
+     */
+    public function enableMongoDb(array $credential, $table_prefix = null)
+    {
+        DBFactory::initMongoDb($credential, $this, $table_prefix);
         $this->mysql_enabled = true;
 
         return $this;
@@ -205,8 +211,7 @@ class Telegram
      */
     public function enableExternalMySql($external_pdo_connection, $table_prefix = null)
     {
-        $this->pdo = DB::externalInitialize($external_pdo_connection, $this, $table_prefix);
-        ConversationDB::initializeConversation();
+        DBFactory::initMysqlExternal($external_pdo_connection, $this, $table_prefix);
         $this->mysql_enabled = true;
 
         return $this;
@@ -328,7 +333,7 @@ class Telegram
             throw new TelegramException('Bot Username is not defined!');
         }
 
-        if (!DB::isDbConnected() && !$this->getupdates_without_database) {
+        if (!DBFactory::getInstance()->isDbConnected() && !$this->getupdates_without_database) {
             return new ServerResponse(
                 [
                     'ok'          => false,
@@ -344,9 +349,9 @@ class Telegram
         if ($custom_input = $this->getCustomInput()) {
             $response = new ServerResponse(json_decode($custom_input, true), $this->bot_username);
         } else {
-            if (DB::isDbConnected()) {
+            if (DBFactory::getInstance()->isDbConnected()) {
                 //Get last update id from the database
-                $last_update = DB::selectTelegramUpdate(1);
+                $last_update = DBFactory::getInstance()->selectTelegramUpdate(1);
                 $last_update = reset($last_update);
 
                 $this->last_update_id = isset($last_update['id']) ? $last_update['id'] : null;
@@ -374,7 +379,7 @@ class Telegram
                 $this->processUpdate($result);
             }
 
-            if (!DB::isDbConnected() && !$custom_input && $this->last_update_id !== null && $offset === 0) {
+            if (!DBFactory::getInstance()->isDbConnected() && !$custom_input && $this->last_update_id !== null && $offset === 0) {
                 //Mark update(s) as read after handling
                 Request::getUpdates(
                     [
@@ -476,13 +481,13 @@ class Telegram
         }
 
         //Make sure we don't try to process update that was already processed
-        $last_id = DB::selectTelegramUpdate(1, $this->update->getUpdateId());
+        $last_id = DBFactory::getInstance()->selectTelegramUpdate(1, $this->update->getUpdateId());
         if ($last_id && count($last_id) === 1) {
             TelegramLog::debug('Duplicate update received, processing aborted!');
             return Request::emptyResponse();
         }
 
-        DB::insertRequest($this->update);
+        DBFactory::getInstance()->insertRequest($this->update);
 
         return $this->executeCommand($command);
     }

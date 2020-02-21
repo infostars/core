@@ -105,7 +105,7 @@ class Conversation
     protected function load()
     {
         //Select an active conversation
-        $conversation = ConversationDB::selectConversation($this->user_id, $this->chat_id, 1);
+        $conversation = DBFactory::getInstance()->selectConversation($this->user_id, $this->chat_id, 1);
         if (isset($conversation[0])) {
             //Pick only the first element
             $this->conversation = $conversation[0];
@@ -146,7 +146,7 @@ class Conversation
     {
         if ($this->command
             && !$this->exists()
-            && ConversationDB::insertConversation(
+            && DBFactory::getInstance()->insertConversation(
                 $this->user_id,
                 $this->chat_id,
                 $this->command
@@ -197,7 +197,7 @@ class Conversation
                 'user_id' => $this->user_id,
                 'chat_id' => $this->chat_id,
             ];
-            if (ConversationDB::updateConversation($fields, $where)) {
+            if (DBFactory::getInstance()->updateConversation($fields, $where)) {
                 return true;
             }
         }
@@ -216,7 +216,7 @@ class Conversation
             $fields = ['notes' => json_encode($this->notes)];
             //I can update a conversation whatever the state is
             $where = ['id' => $this->conversation['id']];
-            if (ConversationDB::updateConversation($fields, $where)) {
+            if (DBFactory::getInstance()->updateConversation($fields, $where)) {
                 return true;
             }
         }

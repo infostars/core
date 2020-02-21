@@ -12,6 +12,7 @@ namespace Longman\TelegramBot\Commands\AdminCommands;
 
 use Longman\TelegramBot\Commands\AdminCommand;
 use Longman\TelegramBot\DB;
+use Longman\TelegramBot\DBFactory;
 use Longman\TelegramBot\Entities\Chat;
 use Longman\TelegramBot\Request;
 
@@ -55,7 +56,7 @@ class ChatsCommand extends AdminCommand
         $chat_id = $message->getChat()->getId();
         $text    = trim($message->getText(true));
 
-        $results = DB::selectChats([
+        $results = DBFactory::getInstance()->selectChats([
             'groups'      => true,
             'supergroups' => true,
             'channels'    => true,

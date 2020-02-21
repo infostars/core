@@ -11,6 +11,7 @@
 namespace Longman\TelegramBot\Commands;
 
 use Longman\TelegramBot\DB;
+use Longman\TelegramBot\DBFactory;
 use Longman\TelegramBot\Entities\CallbackQuery;
 use Longman\TelegramBot\Entities\ChosenInlineResult;
 use Longman\TelegramBot\Entities\InlineQuery;
@@ -148,7 +149,7 @@ abstract class Command
      */
     public function preExecute()
     {
-        if ($this->need_mysql && !($this->telegram->isDbEnabled() && DB::isDbConnected())) {
+        if ($this->need_mysql && !($this->telegram->isDbEnabled() && DBFactory::getInstance()->isDbConnected())) {
             return $this->executeNoDb();
         }
 

@@ -1,13 +1,4 @@
 <?php
-/**
- * This file is part of the TelegramBot package.
- *
- * (c) Avtandil Kikabidze aka LONGMAN <akalongman@gmail.com>
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
- * Written by Marco Boretto <marco.bore@gmail.com>
- */
 
 namespace Longman\TelegramBot;
 
@@ -24,65 +15,17 @@ use Longman\TelegramBot\Exception\TelegramException;
 use PDO;
 use PDOException;
 
-class DB
+class DBMySql extends DBBase
 {
-    /**
-     * MySQL credentials
-     *
-     * @var array
-     */
-    protected $mysql_credentials = [];
+    protected $dbPublicName = 'mysql';
 
     /**
-     * PDO object
-     *
-     * @var PDO
+     * @var PDO $pdo
      */
     protected $pdo;
 
-    /**
-     * Table prefix
-     *
-     * @var string
-     */
-    protected $table_prefix;
-
-    /**
-     * Telegram class object
-     *
-     * @var Telegram
-     */
-    protected $telegram;
-
-    /**
-     * @var self
-     */
-    protected static $instance;
-
-
-    /**
-     * Initialize
-     *
-     * @param array    $credentials  Database connection details
-     * @param Telegram $telegram     Telegram object to connect with this object
-     * @param string   $table_prefix Table prefix
-     * @param string   $encoding     Database character encoding
-     *
-     * @return DB
-     * @throws TelegramException
-     */
-    public function initialize(
-        array $credentials,
-        Telegram $telegram,
-        $table_prefix = null,
-        $encoding = 'utf8mb4'
-    ) {
-        if (self::$instance !== null) {
-            return self::$instance;
-        }
-        if (empty($credentials)) {
-            throw new TelegramException('MySQL credentials not provided!');
-        }
+    protected function initDb(array $credentials, $encoding = 'utf8mb4')
+    {
 
         $dsn = 'mysql:host=' . $credentials['host'] . ';dbname=' . $credentials['database'];
         if (!empty($credentials['port'])) {
@@ -97,85 +40,7 @@ class DB
             throw new TelegramException($e->getMessage());
         }
 
-        $this->pdo               = $pdo;
-        $this->telegram          = $telegram;
-        $this->mysql_credentials = $credentials;
-        $this->table_prefix      = $table_prefix;
-        self::$instance          = $this;
-
-        $this->defineTables();
-
-        return $this;
-    }
-
-    /**
-     * External Initialize
-     *
-     * Let you use the class with an external already existing Pdo Mysql connection.
-     *
-     * @param PDO      $external_pdo_connection PDO database object
-     * @param Telegram $telegram                Telegram object to connect with this object
-     * @param string   $table_prefix            Table prefix
-     *
-     * @return DB
-     * @throws TelegramException
-     */
-    public function externalInitialize(
-        $external_pdo_connection,
-        Telegram $telegram,
-        $table_prefix = null
-    ) {
-        if (self::$instance !== null) {
-            return self::$instance;
-        }
-        if ($external_pdo_connection === null) {
-            throw new TelegramException('MySQL external connection not provided!');
-        }
-
-        $this->pdo               = $external_pdo_connection;
-        $this->telegram          = $telegram;
-        $this->mysql_credentials = [];
-        $this->table_prefix      = $table_prefix;
-        self::$instance          = $this;
-
-        $this->defineTables();
-
-        return $this;
-    }
-
-    /**
-     * @return DB|null
-     */
-    public static function getInstance()
-    {
-        return self::$instance;
-    }
-
-    /**
-     * Define all the tables with the proper prefix
-     */
-    protected function defineTables()
-    {
-        $tables = [
-            'callback_query',
-            'chat',
-            'chosen_inline_result',
-            'edited_message',
-            'inline_query',
-            'message',
-            'request_limiter',
-            'telegram_update',
-            'user',
-            'user_chat',
-            'conversation',
-            'botan_shortener'
-        ];
-        foreach ($tables as $table) {
-            $table_name = 'TB_' . strtoupper($table);
-            if (!defined($table_name)) {
-                define($table_name, $this->table_prefix . $table);
-            }
-        }
+        $this->pdo = $pdo;
     }
 
     /**
@@ -285,75 +150,10 @@ class DB
         }
     }
 
-    /**
-     * Convert from unix timestamp to timestamp
-     *
-     * @param int $time Unix timestamp (if empty, current timestamp is used)
-     *
-     * @return string
-     */
-    protected function getTimestamp($time = null)
+    protected function insertTelegramUpdateToDb($id, $chat_id = null, $message_id = null, $inline_query_id = null,
+                                                $chosen_inline_result_id = null, $callback_query_id = null,
+                                                $edited_message_id = null)
     {
-        return date('Y-m-d H:i:s', $time ?: time());
-    }
-
-    /**
-     * Convert array of Entity items to a JSON array
-     *
-     * @todo Find a better way, as json_* functions are very heavy
-     *
-     * @param array|null $entities
-     * @param mixed      $default
-     *
-     * @return mixed
-     */
-    public function entitiesArrayToJson($entities, $default = null)
-    {
-        if (!is_array($entities)) {
-            return $default;
-        }
-
-        // Convert each Entity item into an object based on its JSON reflection
-        $json_entities = array_map(function ($entity) {
-            return json_decode($entity, true);
-        }, $entities);
-
-        return json_encode($json_entities);
-    }
-
-    /**
-     * Insert entry to telegram_update table
-     *
-     * @todo Add missing values! See https://core.telegram.org/bots/api#update
-     *
-     * @param string $id
-     * @param string $chat_id
-     * @param string $message_id
-     * @param string $inline_query_id
-     * @param string $chosen_inline_result_id
-     * @param string $callback_query_id
-     * @param string $edited_message_id
-     *
-     * @return bool If the insert was successful
-     * @throws TelegramException
-     */
-    public function insertTelegramUpdate(
-        $id,
-        $chat_id = null,
-        $message_id = null,
-        $inline_query_id = null,
-        $chosen_inline_result_id = null,
-        $callback_query_id = null,
-        $edited_message_id = null
-    ) {
-        if ($message_id === null && $inline_query_id === null && $chosen_inline_result_id === null && $callback_query_id === null && $edited_message_id === null) {
-            throw new TelegramException('message_id, inline_query_id, chosen_inline_result_id, callback_query_id, edited_message_id are all null');
-        }
-
-        if (!$this->isDbConnected()) {
-            return false;
-        }
-
         try {
             $sth = $this->pdo->prepare('
                 INSERT IGNORE INTO `' . TB_TELEGRAM_UPDATE . '`
@@ -377,21 +177,14 @@ class DB
     }
 
     /**
-     * Insert users and save their connection to chats
+     * @param User $user
      *
-     * @param User   $user
-     * @param string $date
-     * @param Chat   $chat
+     * @param      $date
      *
-     * @return bool If the insert was successful
-     * @throws TelegramException
+     * @return bool
      */
-    public function insertUser(User $user, $date = null, Chat $chat = null)
+    protected function insertUserToDb(User $user, $date)
     {
-        if (!$this->isDbConnected()) {
-            return false;
-        }
-
         try {
             $sth = $this->pdo->prepare('
                 INSERT INTO `' . TB_USER . '`
@@ -422,44 +215,48 @@ class DB
             throw new TelegramException($e->getMessage());
         }
 
-        // Also insert the relationship to the chat into the user_chat table
-        if ($chat instanceof Chat) {
-            try {
-                $sth = $this->pdo->prepare('
+        return $status;
+    }
+
+    /**
+     * @param User $user
+     * @param Chat $chat
+     *
+     * @return bool
+     */
+    protected function insertUserChatRelation(User $user, Chat $chat)
+    {
+        try {
+            $sth = $this->pdo->prepare('
                     INSERT IGNORE INTO `' . TB_USER_CHAT . '`
                     (`user_id`, `chat_id`)
                     VALUES
                     (:user_id, :chat_id)
                 ');
 
-                $sth->bindValue(':user_id', $user->getId());
-                $sth->bindValue(':chat_id', $chat->getId());
+            $sth->bindValue(':user_id', $user->getId());
+            $sth->bindValue(':chat_id', $chat->getId());
 
-                $status = $sth->execute();
-            } catch (PDOException $e) {
-                throw new TelegramException($e->getMessage());
-            }
+            $status = $sth->execute();
+        } catch (PDOException $e) {
+            throw new TelegramException($e->getMessage());
         }
 
         return $status;
     }
 
     /**
-     * Insert chat
+     * @param $chat
+     * @param $id
+     * @param $oldId
+     * @param $type
+     * @param $createdAt
+     * @param $updatedAt
      *
-     * @param Chat   $chat
-     * @param string $date
-     * @param string $migrate_to_chat_id
-     *
-     * @return bool If the insert was successful
-     * @throws TelegramException
+     * @return bool
      */
-    public function insertChat(Chat $chat, $date = null, $migrate_to_chat_id = null)
+    protected function insertChatToDb(Chat $chat, $id, $oldId, $type, $createdAt, $updatedAt, $user = null)
     {
-        if (!$this->isDbConnected()) {
-            return false;
-        }
-
         try {
             $sth = $this->pdo->prepare('
                 INSERT IGNORE INTO `' . TB_CHAT . '`
@@ -474,26 +271,18 @@ class DB
                     `updated_at`                     = VALUES(`updated_at`)
             ');
 
-            $chat_id   = $chat->getId();
-            $chat_type = $chat->getType();
 
-            if ($migrate_to_chat_id !== null) {
-                $chat_type = 'supergroup';
 
-                $sth->bindValue(':id', $migrate_to_chat_id);
-                $sth->bindValue(':old_id', $chat_id);
-            } else {
-                $sth->bindValue(':id', $chat_id);
-                $sth->bindValue(':old_id', $migrate_to_chat_id);
-            }
+            $sth->bindValue(':id', $id);
+            $sth->bindValue(':old_id', $oldId);
 
-            $sth->bindValue(':type', $chat_type);
+            $sth->bindValue(':type', $type);
             $sth->bindValue(':title', $chat->getTitle());
             $sth->bindValue(':username', $chat->getUsername());
             $sth->bindValue(':all_members_are_administrators', $chat->getAllMembersAreAdministrators(), PDO::PARAM_INT);
-            $date = $date ?: $this->getTimestamp();
-            $sth->bindValue(':created_at', $date);
-            $sth->bindValue(':updated_at', $date);
+
+            $sth->bindValue(':created_at', $createdAt);
+            $sth->bindValue(':updated_at', $updatedAt);
 
             return $sth->execute();
         } catch (PDOException $e) {
@@ -673,19 +462,16 @@ class DB
     }
 
     /**
-     * Insert chosen inline result request into database
-     *
      * @param ChosenInlineResult $chosen_inline_result
+     * @param                    $user_id
+     * @param                    $created_at
      *
-     * @return bool If the insert was successful
+     * @return bool
      * @throws TelegramException
      */
-    public function insertChosenInlineResultRequest(ChosenInlineResult $chosen_inline_result)
+    protected function insertChosenInlineResultRequestToDb(ChosenInlineResult $chosen_inline_result, $user_id,
+                                                           $created_at)
     {
-        if (!$this->isDbConnected()) {
-            return false;
-        }
-
         try {
             $sth = $this->pdo->prepare('
                 INSERT INTO `' . TB_CHOSEN_INLINE_RESULT . '`
@@ -694,21 +480,12 @@ class DB
                 (:result_id, :user_id, :location, :inline_message_id, :query, :created_at)
             ');
 
-            $date    = $this->getTimestamp();
-            $user_id = null;
-
-            $user = $chosen_inline_result->getFrom();
-            if ($user instanceof User) {
-                $user_id = $user->getId();
-                $this->insertUser($user, $date);
-            }
-
             $sth->bindValue(':result_id', $chosen_inline_result->getResultId());
             $sth->bindValue(':user_id', $user_id);
             $sth->bindValue(':location', $chosen_inline_result->getLocation());
             $sth->bindValue(':inline_message_id', $chosen_inline_result->getInlineMessageId());
             $sth->bindValue(':query', $chosen_inline_result->getQuery());
-            $sth->bindValue(':created_at', $date);
+            $sth->bindValue(':created_at', $created_at);
 
             return $sth->execute();
         } catch (PDOException $e) {
@@ -717,19 +494,35 @@ class DB
     }
 
     /**
-     * Insert callback query request into database
+     * @param $message_id
+     * @param $chat_id
      *
+     * @return bool
+     */
+    protected function isMessage($message_id, $chat_id)
+    {
+        return (bool)$this->pdo->query('
+                    SELECT *
+                    FROM `' . TB_MESSAGE . '`
+                    WHERE `id` = ' . $message_id . '
+                      AND `chat_id` = ' . $chat_id . '
+                    LIMIT 1
+                ')->rowCount();
+    }
+
+    /**
      * @param CallbackQuery $callback_query
+     * @param               $user_id
+     * @param               $chat_id
+     * @param               $message_id
+     * @param               $created_at
      *
-     * @return bool If the insert was successful
+     * @return bool
      * @throws TelegramException
      */
-    public function insertCallbackQueryRequest(CallbackQuery $callback_query)
+    protected function insertCallbackQueryRequestToDb(CallbackQuery $callback_query, $user_id, $chat_id, $message_id,
+                                                      $created_at)
     {
-        if (!$this->isDbConnected()) {
-            return false;
-        }
-
         try {
             $sth = $this->pdo->prepare('
                 INSERT IGNORE INTO `' . TB_CALLBACK_QUERY . '`
@@ -738,44 +531,13 @@ class DB
                 (:id, :user_id, :chat_id, :message_id, :inline_message_id, :data, :created_at)
             ');
 
-            $date    = $this->getTimestamp();
-            $user_id = null;
-
-            $user = $callback_query->getFrom();
-            if ($user instanceof User) {
-                $user_id = $user->getId();
-                $this->insertUser($user, $date);
-            }
-
-            $message    = $callback_query->getMessage();
-            $chat_id    = null;
-            $message_id = null;
-            if ($message instanceof Message) {
-                $chat_id    = $message->getChat()->getId();
-                $message_id = $message->getMessageId();
-
-                $is_message = $this->pdo->query('
-                    SELECT *
-                    FROM `' . TB_MESSAGE . '`
-                    WHERE `id` = ' . $message_id . '
-                      AND `chat_id` = ' . $chat_id . '
-                    LIMIT 1
-                ')->rowCount();
-
-                if ($is_message) {
-                    $this->insertEditedMessageRequest($message);
-                } else {
-                    $this->insertMessageRequest($message);
-                }
-            }
-
             $sth->bindValue(':id', $callback_query->getId());
             $sth->bindValue(':user_id', $user_id);
             $sth->bindValue(':chat_id', $chat_id);
             $sth->bindValue(':message_id', $message_id);
             $sth->bindValue(':inline_message_id', $callback_query->getInlineMessageId());
             $sth->bindValue(':data', $callback_query->getData());
-            $sth->bindValue(':created_at', $date);
+            $sth->bindValue(':created_at', $created_at);
 
             return $sth->execute();
         } catch (PDOException $e) {
@@ -784,69 +546,28 @@ class DB
     }
 
     /**
-     * Insert Message request in db
-     *
-     * @todo Complete with new fields: https://core.telegram.org/bots/api#message
-     *
      * @param Message $message
+     * @param         $chat_id
+     * @param         $user_id
+     * @param         $date
+     * @param         $forward_from
+     * @param         $forward_from_chat
+     * @param         $forward_date
+     * @param         $reply_to_chat_id
+     * @param         $reply_to_message_id
+     * @param         $entities
+     * @param         $photo
+     * @param         $new_chat_photo
+     * @param         $new_chat_members_ids
+     * @param         $left_chat_member_id
      *
-     * @return bool If the insert was successful
-     * @throws TelegramException
+     * @return bool
      */
-    public function insertMessageRequest(Message $message)
+    protected function insertMessageRequestToDb(Message $message, $chat_id, $user_id, $date, $forward_from,
+                                                $forward_from_chat, $forward_date, $reply_to_chat_id,
+                                                $reply_to_message_id, $entities, $photo, $new_chat_photo,
+                                                $new_chat_members_ids, $left_chat_member_id)
     {
-        if (!$this->isDbConnected()) {
-            return false;
-        }
-
-        $date = $this->getTimestamp($message->getDate());
-
-        // Insert chat, update chat id in case it migrated
-        $chat = $message->getChat();
-        $this->insertChat($chat, $date, $message->getMigrateToChatId());
-
-        // Insert user and the relation with the chat
-        $user = $message->getFrom();
-        if ($user instanceof User) {
-            $this->insertUser($user, $date, $chat);
-        }
-
-        // Insert the forwarded message user in users table
-        $forward_date = null;
-        $forward_from = $message->getForwardFrom();
-        if ($forward_from instanceof User) {
-            $this->insertUser($forward_from, $forward_date);
-            $forward_from = $forward_from->getId();
-            $forward_date = $this->getTimestamp($message->getForwardDate());
-        }
-        $forward_from_chat = $message->getForwardFromChat();
-        if ($forward_from_chat instanceof Chat) {
-            $this->insertChat($forward_from_chat, $forward_date);
-            $forward_from_chat = $forward_from_chat->getId();
-            $forward_date      = $this->getTimestamp($message->getForwardDate());
-        }
-
-        // New and left chat member
-        $new_chat_members_ids = null;
-        $left_chat_member_id  = null;
-
-        $new_chat_members = $message->getNewChatMembers();
-        $left_chat_member = $message->getLeftChatMember();
-        if (!empty($new_chat_members)) {
-            foreach ($new_chat_members as $new_chat_member) {
-                if ($new_chat_member instanceof User) {
-                    // Insert the new chat user
-                    $this->insertUser($new_chat_member, $date, $chat);
-                    $new_chat_members_ids[] = $new_chat_member->getId();
-                }
-            }
-            $new_chat_members_ids = implode(',', $new_chat_members_ids);
-        } elseif ($left_chat_member instanceof User) {
-            // Insert the left chat user
-            $this->insertUser($left_chat_member, $date, $chat);
-            $left_chat_member_id = $left_chat_member->getId();
-        }
-
         try {
             $sth = $this->pdo->prepare('
                 INSERT IGNORE INTO `' . TB_MESSAGE . '`
@@ -868,12 +589,6 @@ class DB
                     :migrate_from_chat_id, :migrate_to_chat_id, :pinned_message, :connected_website, :passport_data
                 )
             ');
-
-            $user_id = null;
-            if ($user instanceof User) {
-                $user_id = $user->getId();
-            }
-            $chat_id = $chat->getId();
 
             $reply_to_message    = $message->getReplyToMessage();
             $reply_to_message_id = null;
@@ -902,12 +617,12 @@ class DB
 
             $sth->bindValue(':media_group_id', $message->getMediaGroupId());
             $sth->bindValue(':text', $message->getText());
-            $sth->bindValue(':entities', $t = $this->entitiesArrayToJson($message->getEntities(), null));
+            $sth->bindValue(':entities', $entities);
             $sth->bindValue(':audio', $message->getAudio());
             $sth->bindValue(':document', $message->getDocument());
             $sth->bindValue(':animation', $message->getAnimation());
             $sth->bindValue(':game', $message->getGame());
-            $sth->bindValue(':photo', $t = $this->entitiesArrayToJson($message->getPhoto(), null));
+            $sth->bindValue(':photo', $photo);
             $sth->bindValue(':sticker', $message->getSticker());
             $sth->bindValue(':video', $message->getVideo());
             $sth->bindValue(':voice', $message->getVoice());
@@ -919,7 +634,7 @@ class DB
             $sth->bindValue(':new_chat_members', $new_chat_members_ids);
             $sth->bindValue(':left_chat_member', $left_chat_member_id);
             $sth->bindValue(':new_chat_title', $message->getNewChatTitle());
-            $sth->bindValue(':new_chat_photo', $t = $this->entitiesArrayToJson($message->getNewChatPhoto(), null));
+            $sth->bindValue(':new_chat_photo', $new_chat_photo);
             $sth->bindValue(':delete_chat_photo', $message->getDeleteChatPhoto());
             $sth->bindValue(':group_chat_created', $message->getGroupChatCreated());
             $sth->bindValue(':supergroup_chat_created', $message->getSupergroupChatCreated());
@@ -936,33 +651,9 @@ class DB
         }
     }
 
-    /**
-     * Insert Edited Message request in db
-     *
-     * @param Message $edited_message
-     *
-     * @return bool If the insert was successful
-     * @throws TelegramException
-     */
-    public function insertEditedMessageRequest(Message $edited_message)
+    protected function insertEditedMessageRequestToDb(Message $edited_message, Chat $chat, $user_id, $edit_date, $entities)
     {
-        if (!$this->isDbConnected()) {
-            return false;
-        }
-
         try {
-            $edit_date = $this->getTimestamp($edited_message->getEditDate());
-
-            // Insert chat
-            $chat = $edited_message->getChat();
-            $this->insertChat($chat, $edit_date);
-
-            // Insert user and the relation with the chat
-            $user = $edited_message->getFrom();
-            if ($user instanceof User) {
-                $this->insertUser($user, $edit_date, $chat);
-            }
-
             $sth = $this->pdo->prepare('
                 INSERT IGNORE INTO `' . TB_EDITED_MESSAGE . '`
                 (`chat_id`, `message_id`, `user_id`, `edit_date`, `text`, `entities`, `caption`)
@@ -970,17 +661,12 @@ class DB
                 (:chat_id, :message_id, :user_id, :edit_date, :text, :entities, :caption)
             ');
 
-            $user_id = null;
-            if ($user instanceof User) {
-                $user_id = $user->getId();
-            }
-
             $sth->bindValue(':chat_id', $chat->getId());
             $sth->bindValue(':message_id', $edited_message->getMessageId());
             $sth->bindValue(':user_id', $user_id);
             $sth->bindValue(':edit_date', $edit_date);
             $sth->bindValue(':text', $edited_message->getText());
-            $sth->bindValue(':entities', $this->entitiesArrayToJson($edited_message->getEntities(), null));
+            $sth->bindValue(':entities', $entities);
             $sth->bindValue(':caption', $edited_message->getCaption());
 
             return $sth->execute();
@@ -990,35 +676,13 @@ class DB
     }
 
     /**
-     * Select Groups, Supergroups, Channels and/or single user Chats (also by ID or text)
-     *
-     * @param $select_chats_params
+     * @param $select array
      *
      * @return array|bool
      * @throws TelegramException
      */
-    public function selectChats($select_chats_params)
+    protected function selectChatsFromDb($select)
     {
-        if (!$this->isDbConnected()) {
-            return false;
-        }
-
-        // Set defaults for omitted values.
-        $select = array_merge([
-            'groups'      => true,
-            'supergroups' => true,
-            'channels'    => true,
-            'users'       => true,
-            'date_from'   => null,
-            'date_to'     => null,
-            'chat_id'     => null,
-            'text'        => null,
-        ], $select_chats_params);
-
-        if (!$select['groups'] && !$select['users'] && !$select['supergroups'] && !$select['channels']) {
-            return false;
-        }
-
         try {
             $query = '
                 SELECT * ,
@@ -1143,20 +807,16 @@ class DB
     }
 
     /**
-     * Insert Telegram API request in db
+     * @param $chat_id
+     * @param $inline_message_id
+     * @param $method
+     * @param $created_at
      *
-     * @param string $method
-     * @param array  $data
-     *
-     * @return bool If the insert was successful
+     * @return bool
      * @throws TelegramException
      */
-    public function insertTelegramRequest($method, $data)
+    protected function insertTelegramRequestToDb($chat_id, $inline_message_id, $method, $created_at)
     {
-        if (!$this->isDbConnected()) {
-            return false;
-        }
-
         try {
             $sth = $this->pdo->prepare('INSERT INTO `' . TB_REQUEST_LIMITER . '`
                 (`method`, `chat_id`, `inline_message_id`, `created_at`)
@@ -1164,13 +824,10 @@ class DB
                 (:method, :chat_id, :inline_message_id, :created_at);
             ');
 
-            $chat_id           = isset($data['chat_id']) ? $data['chat_id'] : null;
-            $inline_message_id = isset($data['inline_message_id']) ? $data['inline_message_id'] : null;
-
             $sth->bindValue(':chat_id', $chat_id);
             $sth->bindValue(':inline_message_id', $inline_message_id);
             $sth->bindValue(':method', $method);
-            $sth->bindValue(':created_at', $this->getTimestamp());
+            $sth->bindValue(':created_at', $created_at);
 
             return $sth->execute();
         } catch (Exception $e) {
@@ -1179,21 +836,15 @@ class DB
     }
 
     /**
-     * Bulk update the entries of any table
-     *
-     * @param string $table
-     * @param array  $fields_values
-     * @param array  $where_fields_values
+     * @param       $table
+     * @param array $fields_values
+     * @param array $where_fields_values
      *
      * @return bool
      * @throws TelegramException
      */
-    public function update($table, array $fields_values, array $where_fields_values)
+    protected function updateInDb($table, array $fields_values, array $where_fields_values)
     {
-        if (empty($fields_values) || !$this->isDbConnected()) {
-            return false;
-        }
-
         try {
             // Building parts of query
             $tokens = $fields = $where = [];
@@ -1308,23 +959,6 @@ class DB
     }
 
     /**
-     * Update a specific conversation
-     *
-     * @param array $fields_values
-     * @param array $where_fields_values
-     *
-     * @return bool
-     * @throws TelegramException
-     */
-    public function updateConversation(array $fields_values, array $where_fields_values)
-    {
-        // Auto update the update_at field.
-        $fields_values['updated_at'] = $this->getTimestamp();
-
-        return $this->update(TB_CONVERSATION, $fields_values, $where_fields_values);
-    }
-
-    /**
      * Select cached shortened URL from the database
      *
      * @deprecated Botan.io service is no longer working
@@ -1395,5 +1029,13 @@ class DB
         } catch (Exception $e) {
             throw new TelegramException($e->getMessage());
         }
+    }
+
+    /**
+     * @return bool|string
+     */
+    public function getDbVersion()
+    {
+        return $this->pdo->query('SELECT VERSION() AS version')->fetchColumn();
     }
 }

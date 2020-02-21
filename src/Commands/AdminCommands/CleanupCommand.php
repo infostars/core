@@ -12,9 +12,13 @@ namespace Longman\TelegramBot\Commands\AdminCommands;
 
 use Longman\TelegramBot\Commands\AdminCommand;
 use Longman\TelegramBot\DB;
+use Longman\TelegramBot\DBFactory;
+use Longman\TelegramBot\DBMongo;
 use Longman\TelegramBot\Exception\TelegramException;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\TelegramLog;
+use MongoDB\BSON\ObjectId;
+use MongoDB\Database;
 use PDOException;
 
 /**
@@ -379,8 +383,6 @@ class CleanupCommand extends AdminCommand
         ];
 
         $settings = $this->getSettings($text);
-        $queries  = $this->getQueries($settings);
-
         $infos = [];
         foreach ($settings['tables_to_clean'] as $table) {
             $info = '*' . $table . '*';
@@ -392,12 +394,49 @@ class CleanupCommand extends AdminCommand
             $infos[] = $info;
         }
 
-        $data['text'] = 'Cleaning up tables:' . PHP_EOL . implode(PHP_EOL, $infos);
+        $db = DBFactory::getInstance();
+        $storageType = 'table';
+        $storageItemType = 'row';
+        try {
+            if ($db instanceof DBMongo) {
+                $removedCount = $this->cleanupMongoDb($settings);
+                $storageType = 'collection';
+                $storageItemType = 'document';
+            } else {
+                $removedCount = $this->cleanupMysql($settings);
+            }
+        } catch (\Exception $exception) {
+            error_log($exception->getMessage());
+            $data['text'] = "{$exception->getMessage()}";
+            Request::sendMessage($data);
+
+            return;
+        }
+
+        $data['text'] = "Cleaning up {$storageType}s:" . PHP_EOL . implode(PHP_EOL, $infos);
 
         Request::sendMessage($data);
 
+        if ($removedCount > 0) {
+            $data['text'] = "*Database cleanup done!* _(removed  {$removedCount} {$storageItemType}s)_";
+        } else {
+            $data['text'] = '*No data to clean!*';
+        }
+
+        return Request::sendMessage($data);
+    }
+
+    /**
+     * @param $settings
+     *
+     * @return int
+     * @throws TelegramException
+     */
+    protected function cleanupMysql($settings)
+    {
+        $queries  = $this->getQueries($settings);
         $rows = 0;
-        $pdo  = DB::getPdo();
+        $pdo  = DBFactory::getInstance()->getPdo();
         try {
             $pdo->beginTransaction();
 
@@ -419,12 +458,26 @@ class CleanupCommand extends AdminCommand
             throw new TelegramException($e->getMessage());
         }
 
-        if ($rows > 0) {
-            $data['text'] = '*Database cleanup done!* _(removed ' . $rows . ' rows)_';
-        } else {
-            $data['text'] = '*No data to clean!*';
+        return $rows;
+    }
+
+    protected function cleanupMongoDb($settings)
+    {
+        $count = 0;
+        /** @var Database $db */
+        $db = DBFactory::getInstance()->getDataBase();
+        foreach ($settings['tables_to_clean'] as $collection) {
+            if (!isset($settings['clean_older_than'][$collection])) {
+                continue;
+            }
+            $olderThanTs = strtotime("- {$settings['clean_older_than'][$collection]}");
+            $olderThanObjectId = new ObjectId(dechex($olderThanTs) . '0000000000000000');
+            $deleteResult = $db->selectCollection($collection)->deleteMany(['_id' => [
+                '$lt' => $olderThanObjectId,
+            ]]);
+            $count += $deleteResult->getDeletedCount();
         }
 
-        return Request::sendMessage($data);
+        return $count;
     }
 }
