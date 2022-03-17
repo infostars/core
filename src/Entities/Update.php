@@ -66,6 +66,7 @@ class Update extends Entity
             'callback_query',
             'shipping_query',
             'pre_checkout_query',
+            'my_chat_member',
         ];
         foreach ($types as $type) {
             if ($this->getProperty($type)) {
